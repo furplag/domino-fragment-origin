@@ -5,9 +5,10 @@
 *.ear
 
 # Eclipse
+.project
+.settings
 .classpath
 .factorypath
-.settings
 
 # Idea
 .idea
