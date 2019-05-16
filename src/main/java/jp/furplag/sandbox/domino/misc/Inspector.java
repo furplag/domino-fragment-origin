@@ -2,6 +2,8 @@ package jp.furplag.sandbox.domino.misc;
 
 import java.lang.reflect.Field;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.Column;
@@ -56,7 +58,17 @@ public interface Inspector {
    * @return {@link NamingType}
    */
   private static NamingType getNamingType(final Object mysterio, final NamingType fallbackDefault) {
-    return Reflections.familyze(mysterio).map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming())).filter(Objects::nonNull).filter(NamingType.NONE::equals).findFirst().orElse(Objects.requireNonNullElse(fallbackDefault, NamingType.NONE));
+    return getNamingType(mysterio).orElse(Objects.requireNonNullElse(fallbackDefault, NamingType.NONE));
+  }
+
+  /**
+   * just a internal process for {@link #getNamingType(Object, NamingType)} .
+   *
+   * @param mysterio entity class or instance, maybe that has annotated with {@link Entity @Entity}
+   * @return the first result of {@link NamingType NamingType (s) }
+   */
+  private static Optional<NamingType> getNamingType(final Object mysterio) {
+    return Reflections.familyze(mysterio).map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming())).filter(Objects::nonNull).filter(NamingType.NONE::equals).findFirst();
   }
 
   /**
