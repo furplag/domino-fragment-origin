@@ -3,7 +3,6 @@ package jp.furplag.sandbox.domino.misc;
 import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.Column;
@@ -133,6 +132,11 @@ public interface Inspector {
     return !Reflections.isAnnotatedWith(field, Transient.class);
   }
 
+  /**
+   * an inspector that fallbacking with nothing .
+   *
+   * @return {@link Inspector}
+   */
   static Inspector defaultInspector() {
     return new Inspector() {};
   }
