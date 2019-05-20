@@ -21,11 +21,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 
-import jp.furplag.function.ThrowableBiFunction;
+import jp.furplag.function.ThrowableTriFunction;
 import jp.furplag.sandbox.domino.misc.Inspector;
 import jp.furplag.sandbox.domino.misc.Retriever;
 import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
@@ -140,8 +141,12 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return selectBuilder ( query structured )
    */
   default SelectBuilder sql(SelectBuilder selectBuilder) {
-    return ThrowableBiFunction.orDefault(selectBuilder, getFragment()
-      , (t, u) -> {t.sql(String.format(u, t.getSql().toString().contains("where ") ? "and" : "where")).param(getTalueType(), getValue()); return t;}, selectBuilder);
+    return ThrowableTriFunction.orDefault(selectBuilder, getFragment(), andWhere(selectBuilder)
+      , (t, u, v) -> {t.sql(String.format(u, v.getAndSet("and"))).param(getTalueType(), getValue()); return t;}, selectBuilder);
+  }
+
+  private AtomicReference<String> andWhere(final SelectBuilder selectBuilder) {
+    return new AtomicReference<>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where");
   }
 
   /** {@inheritDoc} */
