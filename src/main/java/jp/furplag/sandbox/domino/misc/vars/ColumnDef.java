@@ -21,12 +21,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 
-import jp.furplag.function.ThrowableTriConsumer;
+import jp.furplag.function.ThrowableBiConsumer;
 import jp.furplag.sandbox.domino.misc.Inspector;
 import jp.furplag.sandbox.domino.misc.Retriever;
 import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
@@ -141,8 +140,8 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return selectBuilder ( query structured )
    */
   default SelectBuilder sql(SelectBuilder selectBuilder) {
-    ThrowableTriConsumer.orNot(selectBuilder, getFragment(), new AtomicReference<String>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where")
-      , (t, u, v) -> t.sql(String.format(u, v.getAndSet("and"))).param(getTalueType(), getValue()));
+    ThrowableBiConsumer.orNot(selectBuilder, getFragment()
+      , (t, u) -> t.sql(String.format(u, t.getSql().toString().contains("where ") ? "and" : "where")).param(getTalueType(), getValue()));
 
     return selectBuilder;
   }
