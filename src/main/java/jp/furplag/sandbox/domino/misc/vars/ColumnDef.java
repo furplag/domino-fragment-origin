@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -83,6 +84,15 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
     return getField().getName();
   }
 
+  /**
+   * returns the name of the field .
+   *
+   * @return the name of the field
+   */
+  default String getFragment() {
+    return new StringJoiner(" \\%s ", " ", " ").add(getColumnName()).add(Objects.nonNull(getValue()) ? "=" : "is").toString();
+  }
+
   /** {@inheritDoc}
    * <p>returns the name of the field .</p>
    *
@@ -132,7 +142,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
   default SelectBuilder sql(SelectBuilder selectBuilder) {
     Optional.ofNullable(selectBuilder).ifPresent((t) -> {
       final AtomicReference<String> andWhere = new AtomicReference<>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where");
-      selectBuilder.sql(String.format(" %s %s %s ", andWhere.getAndSet("and"), getColumnName(), Objects.nonNull(getValue()) ? "=" : "is")).param(getTalueType(), getValue());
+      selectBuilder.sql(String.format(getFragment(), andWhere.getAndSet("and"))).param(getTalueType(), getValue());
     });
 
     return selectBuilder;
