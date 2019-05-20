@@ -110,7 +110,7 @@ public interface Inspector {
     // @formatter:off
     return Reflections.familyze(entityClass)
       .map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming()))
-      .filter(Objects::nonNull).filter(Predicate.not(NamingType.NONE::equals))
+      .filter(Predicate.not(NamingType.NONE::equals).and(Objects::nonNull))
       .findFirst().orElse(NamingType.NONE);
     // @formatter:on
   }
