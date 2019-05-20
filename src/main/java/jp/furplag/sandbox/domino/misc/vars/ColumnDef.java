@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 
+import jp.furplag.function.ThrowableTriConsumer;
 import jp.furplag.sandbox.domino.misc.Inspector;
 import jp.furplag.sandbox.domino.misc.Retriever;
 import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
@@ -140,10 +141,8 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return selectBuilder ( query structured )
    */
   default SelectBuilder sql(SelectBuilder selectBuilder) {
-    Optional.ofNullable(selectBuilder).ifPresent((t) -> {
-      final AtomicReference<String> andWhere = new AtomicReference<>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where");
-      selectBuilder.sql(String.format(getFragment(), andWhere.getAndSet("and"))).param(getTalueType(), getValue());
-    });
+    ThrowableTriConsumer.orNot(selectBuilder, getFragment(), new AtomicReference<String>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where")
+      , (t, u, v) -> t.sql(String.format(u, v.getAndSet("and"))).param(getTalueType(), getValue()));
 
     return selectBuilder;
   }
