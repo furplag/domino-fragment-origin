@@ -108,7 +108,7 @@ public interface Retriever {
    * @param entity an entity
    * @return fields which related to a database column
    */
-  static Map.Entry<Integer, Stream<Field>> getColumnsPerClass(final int order, final Class<?> entityClass) {
+  private static Map.Entry<Integer, Stream<Field>> getColumnsPerClass(final int order, final Class<?> entityClass) {
     return Map.entry(order, Streamr.stream(Reflections.getFields(entityClass)).map(Reflections::conciliation).filter(Predicate.not(Field::isSynthetic).and(Inspector::isPersistive)));
   }
 

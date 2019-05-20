@@ -16,15 +16,12 @@
 package jp.furplag.sandbox.domino.misc.vars;
 
 import java.lang.reflect.Field;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import javax.sound.midi.Sequence;
 
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 
@@ -135,11 +132,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
   default SelectBuilder sql(SelectBuilder selectBuilder) {
     Optional.ofNullable(selectBuilder).ifPresent((t) -> {
       final AtomicReference<String> andWhere = new AtomicReference<>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where");
-      if (Objects.nonNull(getValue())) {
-        selectBuilder.sql(String.format(" %s %s = ", andWhere.getAndSet("and"), getColumnName())).param(getTalueType(), getValue());
-      } else {
-        selectBuilder.sql(String.format(" %s %s is NULL ", andWhere.getAndSet("and"), getColumnName()));
-      }
+      selectBuilder.sql(String.format(" %s %s %s ", andWhere.getAndSet("and"), getColumnName(), Objects.nonNull(getValue()) ? "=" : "is")).param(getTalueType(), getValue());
     });
 
     return selectBuilder;
