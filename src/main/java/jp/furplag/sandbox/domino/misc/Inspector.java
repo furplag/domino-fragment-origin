@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.Column;
@@ -108,10 +109,20 @@ public interface Inspector {
    */
   private static NamingType getNamingType(final Class<? extends RowOrigin> entityClass) {
     // @formatter:off
-    return Reflections.familyze(entityClass)
-      .map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming()))
-      .filter(Predicate.not(NamingType.NONE::equals).and(Objects::nonNull))
-      .findFirst().orElse(NamingType.NONE);
+    return getNamingType(Reflections.familyze(entityClass)).orElse(NamingType.NONE);
+    // @formatter:on
+  }
+
+  /**
+   * just a internal process for {@link #getNamingType(Object, NamingType)} .
+   *
+   * @param entityClasses stream of class
+   * @return the first result of {@link NamingType NamingType (s) }
+   */
+  private static Optional<NamingType> getNamingType(final Stream<Class<?>> entityClasses) {
+    // @formatter:off
+    return entityClasses.map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming()))
+      .filter(Predicate.not(NamingType.NONE::equals).and(Objects::nonNull)).findFirst();
     // @formatter:on
   }
 
