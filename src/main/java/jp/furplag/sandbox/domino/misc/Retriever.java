@@ -98,7 +98,7 @@ public interface Retriever {
     return Reflections.familyze(entity)
       .map((t) -> getColumnsPerClass(order.decrementAndGet(), t))
       .sorted(Comparator.comparing(Map.Entry::getKey))
-      .flatMap(Map.Entry::getValue).map(Reflections::conciliation).distinct().filter(Predicate.not(Field::isSynthetic));
+      .flatMap(Map.Entry::getValue).distinct().filter(Predicate.not(Field::isSynthetic));
   }
 
   /**
@@ -109,7 +109,7 @@ public interface Retriever {
    * @return fields which related to a database column
    */
   static Map.Entry<Integer, Stream<Field>> getColumnsPerClass(final int order, final Class<?> entityClass) {
-    return Map.entry(order, Streamr.stream(Reflections.getFields(entityClass)).filter(Inspector::isPersistive));
+    return Map.entry(order, Streamr.stream(Reflections.getFields(entityClass)).map(Reflections::conciliation).filter(Inspector::isPersistive));
   }
 
 
