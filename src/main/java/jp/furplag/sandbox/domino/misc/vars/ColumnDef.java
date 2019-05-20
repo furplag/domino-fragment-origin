@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 
-import jp.furplag.function.ThrowableBiConsumer;
+import jp.furplag.function.ThrowableBiFunction;
 import jp.furplag.sandbox.domino.misc.Inspector;
 import jp.furplag.sandbox.domino.misc.Retriever;
 import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
@@ -140,10 +140,8 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return selectBuilder ( query structured )
    */
   default SelectBuilder sql(SelectBuilder selectBuilder) {
-    ThrowableBiConsumer.orNot(selectBuilder, getFragment()
-      , (t, u) -> t.sql(String.format(u, t.getSql().toString().contains("where ") ? "and" : "where")).param(getTalueType(), getValue()));
-
-    return selectBuilder;
+    return ThrowableBiFunction.orDefault(selectBuilder, getFragment()
+      , (t, u) -> {t.sql(String.format(u, t.getSql().toString().contains("where ") ? "and" : "where")).param(getTalueType(), getValue()); return t;}, selectBuilder);
   }
 
   /** {@inheritDoc} */
