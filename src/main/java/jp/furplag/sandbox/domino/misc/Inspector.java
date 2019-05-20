@@ -1,13 +1,31 @@
+/**
+ * Copyright (C) 2019+ furplag (https://github.com/furplag)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package jp.furplag.sandbox.domino.misc;
 
 import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.Column;
+import org.seasar.doma.Domain;
 import org.seasar.doma.Embeddable;
 import org.seasar.doma.Entity;
+import org.seasar.doma.Id;
 import org.seasar.doma.Table;
 import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.entity.NamingType;
@@ -15,7 +33,6 @@ import org.seasar.doma.jdbc.entity.NamingType;
 import jp.furplag.function.ThrowableBiFunction;
 import jp.furplag.function.ThrowableFunction;
 import jp.furplag.function.ThrowablePredicate;
-import jp.furplag.sandbox.domino.misc.marker.DomainsAware;
 import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
 import jp.furplag.sandbox.reflect.Reflections;
 
@@ -27,79 +44,85 @@ import jp.furplag.sandbox.reflect.Reflections;
  */
 public interface Inspector {
 
-  /**
-   * returns the name which converted in the rule of database naming .
-   *
-   * @param entity an entity
-   * @param fallbackDefault returns this value if the entity not specified {@link NamingType}
-   * @return the name which converted in the rule of database naming
-   */
-  private static String getTableName(final Object mysterio) {
-    return ThrowableFunction.orNull(mysterio, (t) -> StringUtils.defaultIfBlank(t.getClass().getAnnotation(Table.class).name(), t.getClass().getSimpleName()));
+  private static String getClassName(final Class<? extends RowOrigin> entityClass) {
+    return ThrowableFunction.orNull(entityClass, Class::getSimpleName);
   }
 
   /**
-   * returns the name which converted in the rule of database naming .
+   * returns the name which annotated with {@link Column#name() Column(name)} .
    *
-   * @param entity an entity
-   * @param fallbackDefault returns this value if the entity not specified {@link NamingType}
-   * @return the name which converted in the rule of database naming
+   * @param field the field maybe a member of an entity
+   * @return the name specified in Annotation. Or returns null by default
    */
   private static String getColumnName(final Field field) {
-    return ThrowableFunction.orNull(field, (t) -> StringUtils.defaultIfBlank(t.getAnnotation(Column.class).name(), t.getName()));
+    return StringUtils.defaultIfBlank(ThrowableFunction.orNull(field, (t) -> t.getAnnotation(Column.class).name()), null);
   }
 
   /**
-   * returns the rule of database naming .
+   * returns the name which converted in the rule of database naming .
    *
-   * @param mysterio entity class or instance, maybe that has annotated with {@link Entity @Entity}
-   * @param fallbackDefault returns this value if the entity not specified NamingType. Or returns {@link NamingType.NONE NONE} if that specified null
-   * @return {@link NamingType}
+   * @param entityClass the class of entity
+   * @return the name which converted in the rule of database naming
    */
-  private static NamingType getNamingType(final Object mysterio, final NamingType fallbackDefault) {
-    return getNamingType(mysterio).orElse(Objects.requireNonNullElse(fallbackDefault, NamingType.NONE));
+  private static String getDefaultName(final Class<? extends RowOrigin> entityClass) {
+    return ThrowableFunction.orElse(entityClass, (t) -> getNamingType(t).apply(getClassName(t)), (t, e) -> getClassName(t));
+  }
+
+  /**
+   * returns the name which converted in the rule of database naming .
+   *
+   * @param entityClass the class of entity
+   * @return the name which converted in the rule of database naming
+   */
+  private static String getDefaultName(final Class<? extends RowOrigin> entityClass, final Field field) {
+    return ThrowableBiFunction.orElse(getNamingType(entityClass), field, (t, u) -> t.apply(u.getName()), (t, u, e) -> u.getName());
+  }
+
+  /**
+   * returns the name which converted in the rule of database naming .
+   *
+   * @param entityClass the class of entity
+   * @return the name which converted in the rule of database naming
+   */
+  static String getName(final Class<? extends RowOrigin> entityClass) {
+    return Optional.ofNullable(getTableName(entityClass))
+        .orElse(getDefaultName(entityClass));
+  }
+
+  /**
+   * returns the name which converted in the rule of database naming .
+   *
+   * @param entityClass the class of entity
+   * @return the name which converted in the rule of database naming
+   */
+  static String getName(final Class<? extends RowOrigin> entityClass, Field field) {
+    return Optional.ofNullable(getColumnName(field))
+        .orElse(getDefaultName(entityClass, field));
   }
 
   /**
    * just a internal process for {@link #getNamingType(Object, NamingType)} .
    *
-   * @param mysterio entity class or instance, maybe that has annotated with {@link Entity @Entity}
+   * @param entityClass entity class or instance, maybe that has annotated with {@link Entity @Entity}
    * @return the first result of {@link NamingType NamingType (s) }
    */
-  private static Optional<NamingType> getNamingType(final Object mysterio) {
-    return Reflections.familyze(mysterio).map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming())).filter(Objects::nonNull).filter(NamingType.NONE::equals).findFirst();
+  private static NamingType getNamingType(final Class<? extends RowOrigin> entityClass) {
+    // @formatter:off
+    return Reflections.familyze(entityClass)
+      .map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming()))
+      .filter(Objects::nonNull).filter(Predicate.not(NamingType.NONE::equals))
+      .findFirst().orElse(NamingType.NONE);
+    // @formatter:on
   }
 
   /**
-   * returns the name which converted in the rule of database naming .
+   * returns the name which annotated with {@link Column#name() Column(name)} .
    *
-   * @param entity an entity
-   * @return the name which converted in the rule of database naming
+   * @param entityClass an entity
+   * @return the name specified in Annotation. Or returns {@link Class#getSimpleName()} by default
    */
-  default String getName(RowOrigin entity) {
-    return getName(entity, null);
-  }
-
-  /**
-   * returns the name which converted in the rule of database naming .
-   *
-   * @param entity an entity
-   * @param fallbackDefault returns this value if the entity not specified {@link NamingType}
-   * @return the name which converted in the rule of database naming
-   */
-  default String getName(RowOrigin entity, NamingType fallbackDefault) {
-    return ThrowableBiFunction.orNull(getTableName(entity), getNamingType(entity, fallbackDefault), (t, u) -> u.apply(t));
-  }
-
-  /**
-   * returns the name which converted in the rule of database naming .
-   *
-   * @param entity an entity
-   * @param fallbackDefault returns this value if the entity not specified {@link NamingType}
-   * @return the name which converted in the rule of database naming
-   */
-  default String getName(RowOrigin entity, Field field, NamingType fallbackDefault) {
-    return ThrowableBiFunction.orNull(getColumnName(field), getNamingType(entity, fallbackDefault), (t, u) -> u.apply(t));
+  private static String getTableName(final Class<? extends RowOrigin> entityClass) {
+    return StringUtils.defaultIfBlank(ThrowableFunction.orNull(entityClass, (t) -> t.getAnnotation(Table.class).name()), null);
   }
 
   /**
@@ -108,8 +131,8 @@ public interface Inspector {
    * @param field a member of an entity class
    * @return the result of inspection
    */
-  default boolean isDomain(Field field) {
-    return ThrowablePredicate.orNot(field, (t) -> t.getType().isAnnotationPresent(DomainsAware.class));
+  static boolean isDomain(Field field) {
+    return ThrowablePredicate.orNot(field, (t) -> Reflections.isAnnotatedWith(t.getType(), Domain.class));
   }
 
   /**
@@ -118,8 +141,18 @@ public interface Inspector {
    * @param field a member of an entity class
    * @return the result of inspection
    */
-  default boolean isEmbeddable(Field field) {
+  static boolean isEmbeddable(Field field) {
     return ThrowablePredicate.orNot(field, (t) -> t.getType().isAnnotationPresent(Embeddable.class));
+  }
+
+  /**
+   * inspects if the field is one of primary key .
+   *
+   * @param field a member of an entity class
+   * @return the result of inspection
+   */
+  static boolean isIdentity(Field field) {
+    return Reflections.isAnnotatedWith(field, Id.class);
   }
 
   /**
@@ -128,16 +161,7 @@ public interface Inspector {
    * @param field a member of an entity class
    * @return the result of inspection
    */
-  default boolean isPersistive(Field field) {
+  static boolean isPersistive(Field field) {
     return !Reflections.isAnnotatedWith(field, Transient.class);
-  }
-
-  /**
-   * an inspector that fallbacking with nothing .
-   *
-   * @return {@link Inspector}
-   */
-  static Inspector defaultInspector() {
-    return new Inspector() {};
   }
 }
