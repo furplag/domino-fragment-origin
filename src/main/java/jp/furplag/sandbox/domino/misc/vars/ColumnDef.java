@@ -13,26 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package jp.furplag.sandbox.domino.misc.vars;
 
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 
 import jp.furplag.function.ThrowableTriFunction;
-import jp.furplag.sandbox.domino.misc.Inspector;
-import jp.furplag.sandbox.domino.misc.Retriever;
-import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
+import jp.furplag.sandbox.domino.misc.generic.EntityInspector;
+import jp.furplag.sandbox.domino.misc.origin.EntityOrigin;
 import jp.furplag.sandbox.reflect.SavageReflection;
-import jp.furplag.sandbox.stream.Streamr;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 /**
@@ -56,9 +54,9 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
   /**
    * returns an instance which has this field .
    *
-   * @return {@link RowOrigin}
+   * @return {@link EntityOrigin}
    */
-  RowOrigin getEntity();
+  EntityOrigin getEntity();
 
   /**
    * returns the column name of the field .
@@ -66,7 +64,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return the column name of the field
    */
   default String getColumnName() {
-    return getEntity().getName(getField());
+    return getEntity().inspector().getName(getField());
   }
 
   /**
@@ -116,7 +114,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return the type of the field
    */
   @SuppressWarnings({ "unchecked" })
-  default Class<T> getTalueType() {
+  default Class<T> getValueType() {
     return (Class<T>) getField().getType();
   }
 
@@ -142,7 +140,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    */
   default SelectBuilder sql(SelectBuilder selectBuilder) {
     return ThrowableTriFunction.orDefault(selectBuilder, getFragment(), andWhere(selectBuilder)
-      , (t, u, v) -> {t.sql(String.format(u, v.getAndSet("and"))).param(getTalueType(), getValue()); return t;}, selectBuilder);
+      , (t, u, v) -> {t.sql(String.format(u, v.getAndSet("and"))).param(getValueType(), getValue()); return t;}, selectBuilder);
   }
 
   private AtomicReference<String> andWhere(final SelectBuilder selectBuilder) {
@@ -156,40 +154,29 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
   }
 
   default Integer prior() {
-    return (Inspector.isIdentity(getField()) ? 0 : 1);
+    return (EntityInspector.isIdentity.test(getField()) ? 0 : 1);
   }
 
-  @EqualsAndHashCode(of = { "identity" })
   static class ColumnField<T> implements ColumnDef<T> {
 
     @Getter
-    private final RowOrigin entity;
-
-    /** the value of field . */
-    @Getter
-    private final Optional<T> mysterio;
+    private final EntityOrigin entity;
 
     @Getter
     private final Field field;
 
     @Getter
-    private final String identity;
-
-    @Getter
     private final List<ColumnField<?>> actualFields;
 
-    public ColumnField(RowOrigin entity, Field field) {
+    public ColumnField(EntityOrigin entity, Field field) {
       this.entity = Objects.requireNonNull(entity);
       this.field = Objects.requireNonNull(field);
-      this.identity = ColumnDef.super.getColumnName();
-      mysterio = mysterio(entity, field);
-      actualFields = Streamr.stream(Retriever.getActualFields(getEntity(), getField()))
+      actualFields = EntityInspector.getActualFields(field)
         .map((actualField) -> new ColumnField<>(entity, actualField)).collect(Collectors.toUnmodifiableList());
     }
 
-    @SuppressWarnings({ "unchecked" })
-    private static <T> Optional<T> mysterio(RowOrigin entity, Field field) {
-      return Optional.ofNullable((T) SavageReflection.get(entity, field));
+    public final Stream<ColumnField<?>> flatten() {
+      return actualFields.isEmpty() ? Stream.of(this) : actualFields.stream();
     }
   }
 }
