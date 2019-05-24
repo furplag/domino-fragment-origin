@@ -40,7 +40,7 @@ import lombok.Getter;
  *
  * @param <T> the type of field
  */
-public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String, T> {
+public interface ColumnDef<T> extends Comparable<ColumnDef<?>>, Map.Entry<String, T> {
 
   /**
    * returns {@link Map.Entry} of the name of field and database column .
@@ -89,7 +89,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
    * @return the name of the field
    */
   default String getFragment() {
-    return new StringJoiner(" \\%s ", " ", " ").add(getColumnName()).add(Objects.nonNull(getValue()) ? "=" : "is").toString();
+    return new StringJoiner(" ", " %s ", " ").add(getColumnName()).add(Objects.nonNull(getValue()) ? "=" : "is").toString();
   }
 
   /** {@inheritDoc}
@@ -149,7 +149,7 @@ public interface ColumnDef<T> extends Comparable<ColumnDef<T>>, Map.Entry<String
 
   /** {@inheritDoc} */
   @Override
-  default int compareTo(ColumnDef<T> anotherOne) {
+  default int compareTo(ColumnDef<?> anotherOne) {
     return anotherOne == null ? 1 : prior().compareTo(anotherOne.prior());
   }
 

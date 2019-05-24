@@ -20,7 +20,6 @@ import java.lang.reflect.Field;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -50,16 +49,6 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
   public EntityInspector(Class<T> entityClass) {
     super(entityClass);
     columnFields = getColumns(getEntityClass());
-  }
-
-  /**
-   * returns the name which converted in the rule of database naming .
-   *
-   * @param fieldName the name of field
-   * @return the name which converted in the rule of database naming
-   */
-  public final String getName(String fieldName) {
-    return getName(columnFields.get(Objects.toString(fieldName, "")));
   }
 
   /**
