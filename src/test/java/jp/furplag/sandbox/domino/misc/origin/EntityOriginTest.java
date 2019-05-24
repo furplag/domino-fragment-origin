@@ -19,6 +19,7 @@ package jp.furplag.sandbox.domino.misc.origin;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
+import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -35,6 +36,7 @@ import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 import org.seasar.doma.jdbc.entity.NamingType;
 
+import jp.furplag.function.ThrowableBiFunction;
 import jp.furplag.sandbox.domino.misc.TestConfig;
 import jp.furplag.sandbox.domino.misc.generic.Inspector;
 import jp.furplag.sandbox.domino.misc.vars.ColumnDef;
@@ -178,6 +180,28 @@ class EntityOriginTest {
         , () -> assertEquals("", new Zero.One().getColumns().stream().flatMap(ColumnField::flatten).map(ColumnField::getField).filter(Inspector.isNotPersistive).map(Field::getName).collect(Collectors.joining(", ")))
         , () -> assertEquals("primaryKey, alternate, toggle, a, b, c", new Zero.One().getColumns().stream().flatMap(ColumnField::flatten).map(ColumnField::getField).filter(Inspector.isPersistive).map(Field::getName).collect(Collectors.joining(", ")))
         , () -> assertEquals("nope, ignore", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isNotPersistive).filter(Predicate.not(Field::isSynthetic)).map(Field::getName).collect(Collectors.joining(", ")))
+    );
+    // @formatter:on
+
+    // @formatter:off
+    assertAll(
+          () -> assertEquals("primaryKey=PRIMARYKEY", new Zero.One().getColumns().stream().findFirst().orElse(null).nameEntry().toString())
+        , () -> assertEquals(new Zero.One().getColumns().stream().findFirst().orElse(null).getKey(), new Zero.One().getColumns().stream().findFirst().orElse(null).getFieldName())
+        , () -> assertEquals(0L, new Zero.One().getColumns().stream().findFirst().orElse(null).getValue())
+        , () -> assertEquals(long.class, new Zero.One().getColumns().stream().findFirst().orElse(null).getValueType())
+        , () -> assertEquals(" %s PRIMARYKEY = ", new Zero.One().getColumns().stream().findFirst().orElse(null).getFragment())
+        , () -> assertEquals(" %s TOGGLE is ", new Zero.One().getColumns().stream().filter((t) -> "toggle".equals(t.getKey())).findFirst().orElse(null).getFragment())
+        , () -> assertThrows(UnsupportedOperationException.class, () -> new ColumnField<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).setValue(100L))
+        , () -> assertEquals("alternate", new Zero.One().getColumns().stream().sorted(Comparator.reverseOrder()).findFirst().orElse(null).getKey())
+        , () -> assertEquals(1, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(null))
+        , () -> assertEquals(0, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(new Zero.One().getColumns().stream().findFirst().orElse(null)))
+        , () -> assertEquals(-1, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(new Zero.One().getColumns().stream().filter((t) -> "toggle".equals(t.getKey())).findFirst().orElse(null)))
+    );
+    // @formatter:on
+
+    // @formatter:off
+    assertAll(
+          () -> assertEquals("select PRIMARYKEY, rename_this_field, TOGGLE, A, B, C from ONE  where PRIMARYKEY = ? and rename_this_field = ? and TOGGLE is ? and A is ? and B is ? and C is ?", ThrowableBiFunction.orNull(new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton())), new Zero.One().getColumns(), (t, u) -> {u.stream().flatMap(ColumnField::flatten).forEach((x) -> x.sql(t)); return t;}).getSql().toString())
     );
     // @formatter:on
   }
