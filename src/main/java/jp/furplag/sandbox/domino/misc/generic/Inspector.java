@@ -79,7 +79,7 @@ public abstract class Inspector<T extends Origin> {
     isDomain = (field) -> theTypeIsAnnotated.test(field, Domain.class);
     isEmbeddable = (field) -> theTypeIsAnnotated.test(field, Embeddable.class);
     isIdentity = (field) -> isAnnotated.test(field, Id.class);
-    isNotPersistive = Stream.of(Field::isSynthetic , Reflections::isStatic, (Predicate<Field>) (t) -> isAnnotated.test(t, Transient.class)).reduce(Predicate::or).orElse((t) -> true);
+    isNotPersistive = Stream.of(Field::isSynthetic, Reflections::isStatic, (Predicate<Field>) (t) -> isAnnotated.test(t, Transient.class)).reduce(Predicate::or).orElse((t) -> true);
     isPersistive = (field) -> ThrowablePredicate.orNot(field, Predicate.not(isNotPersistive)::test);
   }
 

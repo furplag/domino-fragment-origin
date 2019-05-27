@@ -26,7 +26,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import jp.furplag.sandbox.domino.misc.generic.EntityInspector;
 import jp.furplag.sandbox.domino.misc.vars.ColumnDef;
-import jp.furplag.sandbox.domino.misc.vars.ColumnDef.ColumnField;
 import jp.furplag.sandbox.stream.Streamr;
 
 /**
@@ -43,8 +42,8 @@ public interface EntityOrigin extends Origin {
    * @param excludeFieldNames field name (s) which excludes from result
    * @return stream of database columns
    */
-  private static Stream<ColumnField<?>> filteredColumns(final List<ColumnField<?>> columns, final Set<String> excludeFieldNames) {
-    return Streamr.Filter.filtering(Streamr.stream(columns).flatMap(ColumnField::flatten), (t) -> !excludeFieldNames.contains(t.getFieldName()));
+  private static Stream<ColumnDef<?>> filteredColumns(final List<ColumnDef<?>> columns, final Set<String> excludeFieldNames) {
+    return Streamr.Filter.filtering(columns, (t) -> !excludeFieldNames.contains(t.getFieldName()));
   }
 
   /**
@@ -52,9 +51,9 @@ public interface EntityOrigin extends Origin {
    *
    * @return stream of database columns
    */
-  default List<ColumnField<?>> getColumns() {
-    return inspector().getColumnFields().values().stream()
-        .map((t) -> new ColumnField<>(this, t)).collect(Collectors.toUnmodifiableList());
+  default List<ColumnDef<?>> getColumns() {
+    return inspector().getFields().values().stream().map((t) -> new ColumnDef<>(this, t))
+      .flatMap(ColumnDef::flatternyze).sorted().collect(Collectors.toUnmodifiableList());
   }
 
   /** {@inheritDoc} */
