@@ -18,19 +18,14 @@ package jp.furplag.sandbox.domino.misc.vars;
 
 import java.lang.reflect.Field;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.StringJoiner;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.seasar.doma.jdbc.builder.SelectBuilder;
-
-import jp.furplag.function.ThrowableTriFunction;
-import jp.furplag.sandbox.domino.misc.generic.EntityInspector;
+import jp.furplag.sandbox.domino.misc.generic.Inspector;
 import jp.furplag.sandbox.domino.misc.origin.EntityOrigin;
-import jp.furplag.sandbox.reflect.SavageReflection;
+import jp.furplag.sandbox.reflect.Reflections;
+import jp.furplag.sandbox.stream.Streamr;
 import lombok.Getter;
 
 /**
@@ -40,143 +35,48 @@ import lombok.Getter;
  *
  * @param <T> the type of field
  */
-public interface ColumnDef<T> extends Comparable<ColumnDef<?>>, Map.Entry<String, T> {
+public class ColumnDef<T> implements VarOrigin<T> {
+
+  /** instance of entity . */
+  @Getter
+  private final EntityOrigin entity;
+
+  /** field of entity . */
+  @Getter
+  private final Field field;
+
+  /** nested field of entity . */
+  @Getter
+  private final List<ColumnDef<?>> actualFields;
 
   /**
-   * returns {@link Map.Entry} of the name of field and database column .
    *
-   * @return the name of the field
+   * @param entity an entry
+   * @param field the field of entity
    */
-  default Map.Entry<String, String> nameEntry() {
-    return Map.entry(getFieldName(), getColumnName());
-  }
-
-  /**
-   * returns an instance which has this field .
-   *
-   * @return {@link EntityOrigin}
-   */
-  EntityOrigin getEntity();
-
-  /**
-   * returns the column name of the field .
-   *
-   * @return the column name of the field
-   */
-  default String getColumnName() {
-    return getEntity().inspector().getName(getField());
+  public ColumnDef(EntityOrigin entity, Field field) {
+    this.entity = Objects.requireNonNull(entity);
+    this.field = Objects.requireNonNull(field);
+    actualFields = actualFieldsInternal(getField()).map((t) -> new ColumnDef<>(entity, t)).collect(Collectors.toUnmodifiableList());
   }
 
   /**
-   * returns the field .
+   * returns actual field (s) if the type of this field is {@link org.seasar.doma.Embeddable @Embeddable} .
    *
-   * @return {@link Field}
+   * @return nested field (s)
    */
-  Field getField();
-
-  /**
-   * returns the name of the field .
-   *
-   * @return the name of the field
-   */
-  default String getFieldName() {
-    return getField().getName();
+  public final Stream<ColumnDef<?>> flatternyze() {
+    return actualFields.isEmpty() ? Stream.of(this) : Streamr.stream(actualFields);
   }
 
   /**
-   * returns the name of the field .
+   * just an internal process to intializing {@link #actualFields} .
    *
-   * @return the name of the field
+   * @param field the field of entity
+   * @return nested field (s)
    */
-  default String getFragment() {
-    return new StringJoiner(" ", " %s ", " ").add(getColumnName()).add(Objects.nonNull(getValue()) ? "=" : "is").toString();
-  }
-
-  /** {@inheritDoc}
-   * <p>returns the name of the field .</p>
-   *
-   */
-  @Override
-  default String getKey() {
-    return getFieldName();
-  }
-
-  /** {@inheritDoc} */
-  @SuppressWarnings({ "unchecked" })
-  @Override
-  default T getValue() {
-    return (T) SavageReflection.get(getEntity(), getField());
-  }
-
-  /**
-   * returns the type of the field .
-   *
-   * @return the type of the field
-   */
-  @SuppressWarnings({ "unchecked" })
-  default Class<T> getValueType() {
-    return (Class<T>) getField().getType();
-  }
-
-  /**
-   * <p>Throws {@code UnsupportedOperationException} .</p>
-   *
-   * <p>The {@link ColumnDef} is immutable, so this operation is not supported .</p>
-   *
-   * @param value  the value to set
-   * @return never
-   * @throws UnsupportedOperationException as this operation is not supported
-   */
-  @Override
-  default T setValue(T value) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * constructing simple SQL .
-   *
-   * @param selectBuilder {@link SelectBuilder}
-   * @return selectBuilder ( query structured )
-   */
-  default SelectBuilder sql(SelectBuilder selectBuilder) {
-    return ThrowableTriFunction.orDefault(selectBuilder, getFragment(), andWhere(selectBuilder)
-      , (t, u, v) -> {t.sql(String.format(u, v.getAndSet("and"))).param(getValueType(), getValue()); return t;}, selectBuilder);
-  }
-
-  private AtomicReference<String> andWhere(final SelectBuilder selectBuilder) {
-    return new AtomicReference<>(selectBuilder.getSql().toString().contains("where ") ? "and" : "where");
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  default int compareTo(ColumnDef<?> anotherOne) {
-    return anotherOne == null ? 1 : prior().compareTo(anotherOne.prior());
-  }
-
-  default Integer prior() {
-    return (EntityInspector.isIdentity.test(getField()) ? 0 : 1);
-  }
-
-  static class ColumnField<T> implements ColumnDef<T> {
-
-    @Getter
-    private final EntityOrigin entity;
-
-    @Getter
-    private final Field field;
-
-    @Getter
-    private final List<ColumnField<?>> actualFields;
-
-    public ColumnField(EntityOrigin entity, Field field) {
-      this.entity = Objects.requireNonNull(entity);
-      this.field = Objects.requireNonNull(field);
-      actualFields = EntityInspector.getActualFields(field)
-        .map((actualField) -> new ColumnField<>(entity, actualField)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public final Stream<ColumnField<?>> flatten() {
-      return actualFields.isEmpty() ? Stream.of(this) : actualFields.stream();
-    }
+  private static Stream<Field> actualFieldsInternal(final Field field) {
+    return !Inspector.isEmbeddable.test(field) ? Stream.empty() :
+      Streamr.Filter.filtering(Reflections.getFields(field.getType()), Inspector.isPersistive::test);
   }
 }

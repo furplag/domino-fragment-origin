@@ -19,9 +19,13 @@ package jp.furplag.sandbox.domino.misc.generic;
 import java.lang.reflect.Field;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
@@ -33,13 +37,18 @@ import jp.furplag.function.ThrowableFunction;
 import jp.furplag.sandbox.domino.misc.origin.Origin;
 import jp.furplag.sandbox.reflect.Reflections;
 import jp.furplag.sandbox.stream.Streamr;
+import lombok.AccessLevel;
 import lombok.Getter;
 
 public class EntityInspector<T extends Origin> extends Inspector<T> {
 
+  /** list of a family of this entity . */
+  @Getter(AccessLevel.PROTECTED)
+  private final List<Class<?>> classes;
+
   /** list of fields which related to a database column . */
   @Getter
-  private final Map<String, Field> columnFields;
+  private final Map<String, Field> fields;
 
   /**
    *
@@ -48,7 +57,8 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
    */
   public EntityInspector(Class<T> entityClass) {
     super(entityClass);
-    columnFields = getColumns(getEntityClass());
+    classes = familyze(entityClass);
+    fields = Streamr.collect(getColumns(classes).map((t) -> Map.entry(getName(t.getValue()).toLowerCase(Locale.ROOT), t.getValue())), (a, b) -> a, LinkedHashMap::new);
   }
 
   /**
@@ -87,8 +97,31 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
    * @param entity an entity
    * @return fields which related to a database column
    */
-  private static Map<String, Field> getColumns(final Class<? extends Origin> entityClass) {
-    return Streamr.collect(getColumnStream(entityClass).map((t) -> Map.entry(t.getName(), t)), (a, b) -> a, LinkedHashMap::new);
+  private static Stream<Map.Entry<String, Field>> getColumns(final List<Class<?>> family) {
+    return Streamr.collect(getColumnStream(family).map((t) -> Map.entry(t.getName(), t)), (a, b) -> a, LinkedHashMap::new).entrySet().stream();
+  }
+
+  /**
+   * just a internal process to intializing {@link #classes} .
+   *
+   * @param entityClass the class of entity
+   * @return list of a family of this entity
+   */
+  private static List<Class<?>> familyze(final Class<?> entityClass) {
+    return familyzeInternal(entityClass).sorted(Comparator.comparing(Map.Entry::getKey))
+      .map(Map.Entry::getValue).collect(Collectors.toUnmodifiableList());
+  }
+
+  /**
+   * just a internal process for {@link #familyze(Class)} .
+   *
+   * @param entityClass the class of entity
+   * @return stream of a family of this entity
+   */
+  private static Stream<Map.Entry<Integer, Class<?>>> familyzeInternal(final Class<?> entityClass) {
+    final AtomicInteger order = new AtomicInteger();
+
+    return Reflections.familyze(entityClass).filter(Predicate.not(Object.class::equals)).map((t) -> Map.entry(order.incrementAndGet(), t));
   }
 
   /**
@@ -97,12 +130,8 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
    * @param entity an entity
    * @return fields which related to a database column
    */
-  private static Stream<Field> getColumnStream(final Class<? extends Origin> entityClass) {
-    final AtomicInteger order = new AtomicInteger();
-    return Reflections.familyze(entityClass)
-      .map((t) -> getColumnsPerClass(order.decrementAndGet(), t))
-      .sorted(Comparator.comparing(Map.Entry::getKey))
-      .flatMap(Map.Entry::getValue).distinct();
+  private static Stream<Field> getColumnStream(List<Class<?>> family) {
+    return family.stream().flatMap(EntityInspector::getColumnsPerClass).distinct();
   }
 
   /**
@@ -112,18 +141,7 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
    * @param entity an entity
    * @return fields which related to a database column
    */
-  private static Map.Entry<Integer, Stream<Field>> getColumnsPerClass(final int order, final Class<?> entityClass) {
-    return Map.entry(order, Streamr.stream(Reflections.getFields(entityClass)).filter(Inspector.isPersistive));
-  }
-
-  /**
-  * returns nested fields which related to a database column .
-  *
-  * @param field a member of an entity class, maybe that contains field (s) which related to a database column
-  * @return fields which related to a database column
-  */
-  public static Stream<Field> getActualFields(final Field field) {
-    return Streamr.stream(Inspector.isEmbeddable.test(field) ? Reflections.getFields(field.getType()) : null)
-      .filter(Inspector.isPersistive);
+  private static Stream<Field> getColumnsPerClass(final Class<?> entityClass) {
+    return Streamr.stream(Reflections.getFields(entityClass)).filter(Inspector.isPersistive);
   }
 }
