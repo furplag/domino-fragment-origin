@@ -42,7 +42,7 @@ import lombok.Getter;
 
 public class EntityInspector<T extends Origin> extends Inspector<T> {
 
-  /** list of class which a family of this entity . */
+  /** list of a family of this entity . */
   @Getter(AccessLevel.PROTECTED)
   private final List<Class<?>> classes;
 
@@ -101,11 +101,27 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
     return Streamr.collect(getColumnStream(family).map((t) -> Map.entry(t.getName(), t)), (a, b) -> a, LinkedHashMap::new);
   }
 
+  /**
+   * just a internal process to intializing {@link #classes} .
+   *
+   * @param entityClass the class of entity
+   * @return list of a family of this entity
+   */
   private static List<Class<?>> familyze(final Class<?> entityClass) {
-    final AtomicInteger order = new AtomicInteger();
-    return Reflections.familyze(entityClass).filter(Predicate.not(Object.class::equals)).map((t) -> Map.entry(order.incrementAndGet(), t))
-      .sorted(Comparator.comparing(Map.Entry::getKey))
+    return familyzeInternal(entityClass).sorted(Comparator.comparing(Map.Entry::getKey))
       .map(Map.Entry::getValue).collect(Collectors.toUnmodifiableList());
+  }
+
+  /**
+   * just a internal process for {@link #familyze(Class)} .
+   *
+   * @param entityClass the class of entity
+   * @return stream of a family of this entity
+   */
+  private static Stream<Map.Entry<Integer, Class<?>>> familyzeInternal(final Class<?> entityClass) {
+    final AtomicInteger order = new AtomicInteger();
+
+    return Reflections.familyze(entityClass).filter(Predicate.not(Object.class::equals)).map((t) -> Map.entry(order.incrementAndGet(), t));
   }
 
   /**
