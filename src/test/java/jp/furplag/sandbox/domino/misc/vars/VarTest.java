@@ -152,7 +152,7 @@ class VarTest {
     final SelectBuilder selectBuilder = SelectBuilder.newInstance(TestConfig.singleton());
     final AtomicReference<String> comma = new AtomicReference<>(" ");
     new Zero.One.Two.Three().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze).forEach((t) -> t.sql(selectBuilder, comma.getAndSet(", ")));
-    assertEquals("primary_key, rename_this_field, toggle, a, b, C", selectBuilder.getSql().toString().replaceAll("\\r\\n", ""));
+    assertEquals("primary_key, rename_this_field, toggle, a, b, C", selectBuilder.getSql().toString().replaceAll("\\r?\\n", ""));
   }
 
   @Test
