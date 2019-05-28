@@ -58,7 +58,7 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
   public EntityInspector(Class<T> entityClass) {
     super(entityClass);
     classes = familyze(entityClass);
-    fields = Streamr.collect(getColumns(classes).entrySet().stream().map((t) -> Map.entry(getName(t.getValue()).toLowerCase(Locale.ROOT), t.getValue())), (a, b) -> a, LinkedHashMap::new);
+    fields = Streamr.collect(getColumns(classes).map((t) -> Map.entry(getName(t.getValue()).toLowerCase(Locale.ROOT), t.getValue())), (a, b) -> a, LinkedHashMap::new);
   }
 
   /**
@@ -97,8 +97,8 @@ public class EntityInspector<T extends Origin> extends Inspector<T> {
    * @param entity an entity
    * @return fields which related to a database column
    */
-  private static Map<String, Field> getColumns(final List<Class<?>> family) {
-    return Streamr.collect(getColumnStream(family).map((t) -> Map.entry(t.getName(), t)), (a, b) -> a, LinkedHashMap::new);
+  private static Stream<Map.Entry<String, Field>> getColumns(final List<Class<?>> family) {
+    return Streamr.collect(getColumnStream(family).map((t) -> Map.entry(t.getName(), t)), (a, b) -> a, LinkedHashMap::new).entrySet().stream();
   }
 
   /**
