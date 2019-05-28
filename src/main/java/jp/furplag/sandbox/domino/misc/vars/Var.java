@@ -127,6 +127,7 @@ public interface Var<T> extends Comparable<Var<?>>, Map.Entry<String, T> {
     }
 
     /** {@inheritDoc} */
+    @Override
     public final Stream<Var<?>> flatternyze() {
       return getActualFields().isEmpty() ? Var.super.flatternyze() : Streamr.stream(getActualFields());
     }
