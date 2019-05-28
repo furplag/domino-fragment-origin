@@ -38,7 +38,7 @@ import org.seasar.doma.jdbc.entity.NamingType;
 
 import jp.furplag.sandbox.domino.misc.TestConfig;
 import jp.furplag.sandbox.domino.misc.generic.Inspector;
-import jp.furplag.sandbox.domino.misc.vars.ColumnDef;
+import jp.furplag.sandbox.domino.misc.vars.Var;
 import jp.furplag.sandbox.reflect.Reflections;
 import jp.furplag.sandbox.stream.Streamr;
 import lombok.AllArgsConstructor;
@@ -143,8 +143,8 @@ class EntityOriginTest {
     assertAll(
         () -> assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(TestConfig.singleton()), "one", "two", "three").getSql().toString())
       , () -> assertEquals("select PRIMARYKEY, rename_this_field, TOGGLE, A, B, C from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), "one", "two", "three").getSql().toString())
-      , () -> assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), new Zero.One().getColumns().stream().map(ColumnDef::getFieldName).collect(Collectors.joining(", ")).split(", ")).getSql().toString())
-      , () -> assertEquals("select PRIMARYKEY from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), new Zero.One().getColumns().stream().filter((t) -> !Inspector.isIdentity.test(t.getField())).map(ColumnDef::getFieldName).collect(Collectors.joining(", ")).split(", ")).getSql().toString())
+      , () -> assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), new Zero.One().getColumns().stream().map(Var::getFieldName).collect(Collectors.joining(", ")).split(", ")).getSql().toString())
+      , () -> assertEquals("select PRIMARYKEY from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), new Zero.One().getColumns().stream().filter((t) -> !Inspector.isIdentity.test(t.getField())).map(Var::getFieldName).collect(Collectors.joining(", ")).split(", ")).getSql().toString())
     );
     // @formatter:on
   }
@@ -161,22 +161,22 @@ class EntityOriginTest {
 
     // @formatter:off
     assertAll(
-        () -> assertEquals("", new Zero().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One.Two().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three.Four().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three.Four.Five().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
+        () -> assertEquals("", new Zero().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One.Two().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three.Four().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three.Four.Five().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
     );
     // @formatter:on
 
     // @formatter:off
     assertAll(
-          () -> assertEquals("primaryKey", new Zero.One().getColumns().stream().map(ColumnDef::getField).filter(Inspector.isIdentity).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("toggle", new Zero.One().getColumns().stream().map(ColumnDef::getField).filter(Inspector.isDomain).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("", new Zero.One().getColumns().stream().map(ColumnDef::getField).filter(Inspector.isEmbeddable).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("", new Zero.One().getColumns().stream().map(ColumnDef::getField).filter(Inspector.isNotPersistive).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("primaryKey, alternate, toggle, a, b, c", new Zero.One().getColumns().stream().map(ColumnDef::getField).filter(Inspector.isPersistive).map(Field::getName).collect(Collectors.joining(", ")))
+          () -> assertEquals("primaryKey", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isIdentity).map(Field::getName).collect(Collectors.joining(", ")))
+        , () -> assertEquals("toggle", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isDomain).map(Field::getName).collect(Collectors.joining(", ")))
+        , () -> assertEquals("", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isEmbeddable).map(Field::getName).collect(Collectors.joining(", ")))
+        , () -> assertEquals("", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isNotPersistive).map(Field::getName).collect(Collectors.joining(", ")))
+        , () -> assertEquals("primaryKey, alternate, toggle, a, b, c", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isPersistive).map(Field::getName).collect(Collectors.joining(", ")))
         , () -> assertEquals("nope, ignore", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isNotPersistive).filter(Predicate.not(Field::isSynthetic)).map(Field::getName).collect(Collectors.joining(", ")))
     );
     // @formatter:on
@@ -186,7 +186,7 @@ class EntityOriginTest {
           () -> assertEquals(new Zero.One().getColumns().stream().findFirst().orElse(null).getKey(), new Zero.One().getColumns().stream().findFirst().orElse(null).getFieldName())
         , () -> assertEquals(0L, new Zero.One().getColumns().stream().findFirst().orElse(null).getValue())
         , () -> assertEquals(long.class, new Zero.One().getColumns().stream().findFirst().orElse(null).getValueType())
-        , () -> assertThrows(UnsupportedOperationException.class, () -> new ColumnDef<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).setValue(100L))
+        , () -> assertThrows(UnsupportedOperationException.class, () -> new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).setValue(100L))
         , () -> assertEquals("alternate", new Zero.One().getColumns().stream().sorted(Comparator.reverseOrder()).findFirst().orElse(null).getKey())
         , () -> assertEquals(1, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(null))
         , () -> assertEquals(0, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(new Zero.One().getColumns().stream().findFirst().orElse(null)))

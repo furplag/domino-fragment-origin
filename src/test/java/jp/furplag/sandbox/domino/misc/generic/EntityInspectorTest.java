@@ -34,7 +34,7 @@ import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.entity.NamingType;
 
 import jp.furplag.sandbox.domino.misc.origin.EntityOrigin;
-import jp.furplag.sandbox.domino.misc.vars.ColumnDef;
+import jp.furplag.sandbox.domino.misc.vars.Var;
 import jp.furplag.sandbox.reflect.Reflections;
 import jp.furplag.sandbox.reflect.SavageReflection;
 import jp.furplag.sandbox.stream.Streamr;
@@ -144,9 +144,9 @@ class EntityInspectorTest {
 
     // @formatter:off
     assertAll(
-        () -> assertEquals("one, two, three, four, five, six, se7en", new Zero.One().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("one, two, three, four, five, six, se7en", new Zero.One.Two().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("ONE, TWO, three, FOUR, FIVE, SIX, se7en", new Zero.One.Two.Three().getColumns().stream().map(ColumnDef::getColumnName).collect(Collectors.joining(", ")))
+        () -> assertEquals("one, two, three, four, five, six, se7en", new Zero.One().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("one, two, three, four, five, six, se7en", new Zero.One.Two().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("ONE, TWO, three, FOUR, FIVE, SIX, se7en", new Zero.One.Two.Three().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
     );
     // @formatter:on
   }
