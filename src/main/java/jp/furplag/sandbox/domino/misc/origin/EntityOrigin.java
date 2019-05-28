@@ -39,6 +39,7 @@ public interface EntityOrigin extends Origin {
   /**
    * returns database columns defined in this entity .
    *
+   * @param database columns
    * @param excludeFieldNames field name (s) which excludes from result
    * @return stream of database columns
    */
@@ -47,13 +48,22 @@ public interface EntityOrigin extends Origin {
   }
 
   /**
+   * just an internal processfor {@link #getColumns()} .
+   *
+   * @param database columns
+   * @return list of database columns
+   */
+  private static List<ColumnDef<?>> flatternyze(final Stream<ColumnDef<?>> columns) {
+    return columns.flatMap(ColumnDef::flatternyze).sorted().collect(Collectors.toUnmodifiableList());
+  }
+
+  /**
    * returns database columns defined in this entity .
    *
-   * @return stream of database columns
+   * @return list of database columns
    */
   default List<ColumnDef<?>> getColumns() {
-    return inspector().getFields().values().stream().map((t) -> new ColumnDef<>(this, t))
-      .flatMap(ColumnDef::flatternyze).sorted().collect(Collectors.toUnmodifiableList());
+    return flatternyze(inspector().getFields().values().stream().map((t) -> new ColumnDef<>(this, t)));
   }
 
   /** {@inheritDoc} */
