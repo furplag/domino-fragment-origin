@@ -52,13 +52,12 @@ public class ColumnDef<T> implements VarOrigin<T> {
   /**
    *
    * @param entity an entry
-   * @param field of entity
+   * @param field the field of entity
    */
   public ColumnDef(EntityOrigin entity, Field field) {
     this.entity = Objects.requireNonNull(entity);
     this.field = Objects.requireNonNull(field);
-    actualFields = Streamr.Filter.filtering(Reflections.getFields(Inspector.isEmbeddable.test(getField()) ? getValueType() : null), Inspector.isPersistive::test)
-      .map((t) -> new ColumnDef<>(entity, t)).collect(Collectors.toUnmodifiableList());
+    actualFields = actualFieldsInternal(getField()).map((t) -> new ColumnDef<>(entity, t)).collect(Collectors.toUnmodifiableList());
   }
 
   /**
@@ -68,5 +67,16 @@ public class ColumnDef<T> implements VarOrigin<T> {
    */
   public final Stream<ColumnDef<?>> flatternyze() {
     return actualFields.isEmpty() ? Stream.of(this) : Streamr.stream(actualFields);
+  }
+
+  /**
+   * just an internal process to intializing {@link #actualFields} .
+   *
+   * @param field the field of entity
+   * @return nested field (s)
+   */
+  private static Stream<Field> actualFieldsInternal(final Field field) {
+    return !Inspector.isEmbeddable.test(field) ? Stream.empty() :
+      Streamr.Filter.filtering(Reflections.getFields(field.getType()), Inspector.isPersistive::test);
   }
 }
