@@ -39,7 +39,7 @@ public interface EntityOrigin extends Origin {
   /**
    * returns database columns defined in this entity .
    *
-   * @param database columns
+   * @param columns database columns
    * @param excludeFieldNames field name (s) which excludes from result
    * @return stream of database columns
    */

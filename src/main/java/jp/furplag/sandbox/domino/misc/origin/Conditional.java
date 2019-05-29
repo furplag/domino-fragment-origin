@@ -27,22 +27,47 @@ import jp.furplag.sandbox.domino.misc.vars.Var;
 import jp.furplag.sandbox.domino.misc.vars.Where;
 import jp.furplag.sandbox.stream.Streamr;
 
+/**
+ * a simply structure of the {@link org.seasar.doma.Entity} .
+ *
+ * @author furplag
+ *
+ */
 public interface Conditional extends EntityOrigin {
 
+  /** @return storing condition (s) to use in where clause */
   Map<String, Where<?>> getWheres();
 
+  /**
+   * storing the values to use in where clause .
+   *
+   * @param vars the condition (s) to use in where clause
+   * @return this entity
+   */
   default Conditional where(Stream<Var<?>> vars) {
     Streamr.stream(vars).forEach((var) -> getWheres().put(var.getColumnName(), Where.of(var)));
 
     return this;
   }
 
+  /** {@inheritDoc} */
   @Override
   default SelectBuilder select(SelectBuilder selectBuilder, String... excludeFieldNames) {
     EntityOrigin.super.select(selectBuilder);
-    final Set<String> excludes = Streamr.collect(HashSet::new, excludeFieldNames);
-    getWheres().values().stream().filter((t) -> !excludes.contains(t.getFieldName())).sorted().forEach((t) -> t.sql(selectBuilder, ""));
+    filteredColumns(getWheres(), Streamr.collect(HashSet::new, excludeFieldNames)).sorted().forEach((t) -> t.sql(selectBuilder, ""));
 
     return selectBuilder;
+  }
+
+
+  /**
+   * returns database columns defined in this entity .
+   *
+   * @param database columns
+   * @param excludeFieldNames field name (s) which excludes from result
+   * @return stream of database columns
+   */
+  private static Stream<Where<?>> filteredColumns(final Map<String, Where<?>> wheres, final Set<String> excludeFieldNames) {
+    return Streamr.Filter.filtering(wheres.values(), (t) -> !excludeFieldNames.contains(t.getFieldName()));
   }
 }
