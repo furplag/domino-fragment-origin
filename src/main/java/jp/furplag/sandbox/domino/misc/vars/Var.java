@@ -122,7 +122,7 @@ public interface Var<T> extends Comparable<Var<?>>, Map.Entry<String, T> {
      * @return the field (s) actually related to database column
      */
     private static Stream<Field> getActualFields(final Field field) {
-      return Inspector.isEmbeddable.test(field) ? Streamr.Filter.filtering(Reflections.getFields(field.getType()), Inspector.isPersistive::test) :
+      return Inspector.Predicates.isEmbeddable(field) ? Streamr.Filter.filtering(Reflections.getFields(field.getType()), Inspector.Predicates::isPersistive) :
         Stream.empty();
     }
 
@@ -154,7 +154,7 @@ public interface Var<T> extends Comparable<Var<?>>, Map.Entry<String, T> {
    * @return the result of comparing by field annotation
    */
   default int getColumnPriority() {
-    return Inspector.isIdentity.test(getField()) ? 10 : 20;
+    return Inspector.Predicates.isIdentity(getField()) ? 10 : 20;
   }
 
   /**

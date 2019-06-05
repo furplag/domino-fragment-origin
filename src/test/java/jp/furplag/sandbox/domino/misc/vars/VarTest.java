@@ -145,13 +145,13 @@ class VarTest {
         () -> assertEquals("PRIMARYKEY", new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).flatternyze().map(Var::getColumnName).collect(Collectors.joining(", ")))
       , () -> assertEquals("A, B, C", new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "abc")).flatternyze().map(Var::getColumnName).collect(Collectors.joining(", ")))
       , () -> assertEquals("PRIMARYKEY", new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).flatternyze().map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One.Two().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two(), t)).flatMap(Var.Origin::flatternyze).map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze).map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One.Two().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two(), t)).flatMap(Var.Origin::flatternyze).map(Var::getColumnName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze).map(Var::getColumnName).collect(Collectors.joining(", ")))
     );
     // @formatter:on
     final SelectBuilder selectBuilder = SelectBuilder.newInstance(TestConfig.singleton());
     final AtomicReference<String> comma = new AtomicReference<>(" ");
-    new Zero.One.Two.Three().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze).forEach((t) -> t.sql(selectBuilder, comma.getAndSet(", ")));
+    new Zero.One.Two.Three().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze).forEach((t) -> t.sql(selectBuilder, comma.getAndSet(", ")));
     assertEquals("primary_key, rename_this_field, toggle, a, b, C", selectBuilder.getSql().toString().replaceAll("\\r?\\n", ""));
   }
 
@@ -165,8 +165,8 @@ class VarTest {
       , () -> assertThrows(NullPointerException.class, () -> new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).sql(null, null))
       , () -> assertThrows(UnsupportedOperationException.class, () -> new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).setValue(123L))
       , () -> assertEquals("PRIMARYKEY", new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).sql(SelectBuilder.newInstance(TestConfig.singleton()), null).getSql().toString().replaceAll("\\r\\n", ""))
-      , () -> assertEquals("PRIMARYKEY", new Zero.One().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One(), t)).flatMap(Var.Origin::flatternyze).sorted().map(Var::getColumnName).findFirst().orElse(null))
-      , () -> assertEquals("rename_this_field", new Zero.One().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One(), t)).flatMap(Var.Origin::flatternyze).sorted(Comparator.reverseOrder()).map(Var::getColumnName).findFirst().orElse(null))
+      , () -> assertEquals("PRIMARYKEY", new Zero.One().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One(), t)).flatMap(Var.Origin::flatternyze).sorted().map(Var::getColumnName).findFirst().orElse(null))
+      , () -> assertEquals("rename_this_field", new Zero.One().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One(), t)).flatMap(Var.Origin::flatternyze).sorted(Comparator.reverseOrder()).map(Var::getColumnName).findFirst().orElse(null))
     );
     // @formatter:on
 
@@ -178,18 +178,14 @@ class VarTest {
       , () -> assertThrows(NullPointerException.class, () -> new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).sql(null, null))
       , () -> assertThrows(UnsupportedOperationException.class, () -> new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).setValue(123L))
       , () -> assertEquals("PRIMARYKEY", new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).sql(SelectBuilder.newInstance(TestConfig.singleton()), null).getSql().toString().replaceAll("\\r\\n", ""))
-      , () -> assertEquals("PRIMARYKEY", new Zero.One().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One(), t)).flatMap(Var.Origin::flatternyze).sorted().map(Var::getColumnName).findFirst().orElse(null))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", Var.map(new Zero.One.Two.Three().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Var::getColumnName).keySet().stream().collect(Collectors.joining(", ")))
-      , () -> assertEquals("primaryKey, alternate, toggle, a, b, c", Var.map(new Zero.One.Two.Three().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Map.Entry::getKey).keySet().stream().collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, alternate, toggle, a, b, C", Var.map(new Zero.One.Two.Three.Four().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Var::getColumnName).keySet().stream().collect(Collectors.joining(", ")))
-      , () -> assertEquals("primaryKey, a, b, c, alternate, toggle", Var.map(new Zero.One.Two.Three.Four.Five().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Map.Entry::getKey).keySet().stream().collect(Collectors.joining(", ")))
-      , () -> assertEquals("primaryKey, a, b, c, alternate, toggle", Var.map(Stream.concat(new Zero.One.Two.Three.Four.Five().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), new Zero.One.Two.Three.Four.Five().inspector().getFields().values().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze)), Map.Entry::getKey).keySet().stream().collect(Collectors.joining(", ")))
+      , () -> assertEquals("PRIMARYKEY", new Zero.One().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One(), t)).flatMap(Var.Origin::flatternyze).sorted().map(Var::getColumnName).findFirst().orElse(null))
+      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", Var.map(new Zero.One.Two.Three().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Var::getColumnName).keySet().stream().collect(Collectors.joining(", ")))
+      , () -> assertEquals("primaryKey, alternate, toggle, a, b, c", Var.map(new Zero.One.Two.Three().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Map.Entry::getKey).keySet().stream().collect(Collectors.joining(", ")))
+      , () -> assertEquals("primary_key, alternate, rename_this_field, toggle, a, b, C", Var.map(new Zero.One.Two.Three.Four().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Var::getColumnName).keySet().stream().collect(Collectors.joining(", ")))
+      , () -> assertEquals("primaryKey, a, b, c, alternate, toggle", Var.map(new Zero.One.Two.Three.Four.Five().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), Map.Entry::getKey).keySet().stream().collect(Collectors.joining(", ")))
+      , () -> assertEquals("primaryKey, a, b, c, alternate, toggle", Var.map(Stream.concat(new Zero.One.Two.Three.Four.Five().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze), new Zero.One.Two.Three.Four.Five().inspector().getFields().stream().map((t) -> new Var.Origin<>(new Zero.One.Two.Three(), t)).flatMap(Var.Origin::flatternyze)), Map.Entry::getKey).keySet().stream().collect(Collectors.joining(", ")))
     );
     // @formatter:on
-
-    final Zero.One one = new Zero.One();
-    one.abc =new Abc(1, "A", "B", "C");
-    assertEquals("0, 0, A, B, C", one.inspector().getFields().values().stream().map((t) -> new Var.Origin<>(one, t)).flatMap(Var.Origin::flatternyze).map(Var::getValue).filter(Objects::nonNull).map(Objects::toString).collect(Collectors.joining(", ")));
   }
 
 }

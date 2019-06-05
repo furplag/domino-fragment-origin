@@ -16,6 +16,7 @@
 
 package jp.furplag.sandbox.domino.misc.origin;
 
+import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 import org.seasar.doma.jdbc.entity.NamingType;
 
@@ -34,8 +35,9 @@ public interface Origin {
    *
    * @return an inspector of this entity
    */
-  default Inspector<? extends Origin> inspector() {
-    return Inspector.defaultInspector(getClass());
+  @SuppressWarnings({ "unchecked" })
+  default <T extends Origin> Inspector<T> inspector() {
+    return Inspector.of((Class<T>) getClass());
   }
 
   /**
@@ -44,7 +46,16 @@ public interface Origin {
    * @return the name which converted in the rule of database naming
    */
   default String getName() {
-    return inspector().getName();
+    return StringUtils.defaultIfBlank(inspector().getName(), defaultName());
+  }
+
+  /**
+   * returns default name if failed converting in the rule of database naming .
+   *
+   * @return the name which converted in the rule of database naming
+   */
+  default String defaultName() {
+    return getClass().getName().replaceAll("^.*\\.", "").replaceAll("\\<.*$", "");
   }
 
   /**

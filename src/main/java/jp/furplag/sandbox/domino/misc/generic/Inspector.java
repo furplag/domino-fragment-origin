@@ -17,17 +17,25 @@
 package jp.furplag.sandbox.domino.misc.generic;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
-import java.util.Objects;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiPredicate;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.seasar.doma.Column;
 import org.seasar.doma.Domain;
 import org.seasar.doma.Embeddable;
-import org.seasar.doma.Entity;
 import org.seasar.doma.Id;
 import org.seasar.doma.Table;
 import org.seasar.doma.Transient;
@@ -39,9 +47,13 @@ import jp.furplag.function.ThrowableFunction;
 import jp.furplag.function.ThrowablePredicate;
 import jp.furplag.sandbox.domino.misc.origin.Origin;
 import jp.furplag.sandbox.reflect.Reflections;
+import jp.furplag.sandbox.stream.Streamr;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.ToString;
 
 /**
  * a simply structure of the {@link org.seasar.doma.Entity} .
@@ -50,99 +62,378 @@ import lombok.NonNull;
  *
  * @param <T> the type of entity
  */
-public abstract class Inspector<T extends Origin> {
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@EqualsAndHashCode(of = { "classes", "fields", "namingType" })
+@ToString(of = { "entityClass" })
+public class Inspector<T extends jp.furplag.sandbox.domino.misc.origin.Origin> {
 
-  /** tests whether the field annotated with specified {@link Annotation} . */
-  private static final BiPredicate<Field, Class<? extends Annotation>> isAnnotated;
+  /**
+   * a simply structure of the {@link org.seasar.doma.Entity} .
+   *
+   * @author furplag
+   *
+   */
+  public static interface Entities {
 
-  /** tests whether the field annotated with specified {@link Annotation} . */
-  private static final BiPredicate<Field, Class<? extends Annotation>> theTypeIsAnnotated;
+    /**
+     * a simply structure of the {@link org.seasar.doma.Entity} .
+     *
+     * @author furplag
+     *
+     */
+    public static interface Columns {
 
-  /** if the field type is the class which contains field (s) which related to a database column . */
-  public static final Predicate<Field> isDomain;
+      /**
+       * returns stream of unique values merged into values with same keys represented by keyMapper .
+       *
+       * @param fields stream of field
+       * @param keyMapper a function to merging values
+       * @param overWrite if true, overwrite the value when key duplicated
+       * @return stream of field
+       */
+      private static <T> Stream<Field> distinct(final Stream<Field> fields, final Function<Field, T> keyMapper) {
+        return Streamr.collect(Streamr.stream(fields).map((field) -> Map.entry(keyMapper.apply(field), field)), (a, b) -> a, LinkedHashMap::new).values().stream();
+      }
 
-  /** tests if the field type is the class which contains field (s) which related to a database column . */
-  public static final Predicate<Field> isEmbeddable;
+      /**
+       * returns the field (s) actually related to database column .
+       *
+       * @param field a member of the entity
+       * @return the field (s) actually related to database column
+       */
+      private static Stream<Field> flatternyze(final Field field) {
+        return Predicates.isEmbeddable(field) ? Streamr.Filter.filtering(Reflections.getFields(field.getType()), Predicates::isPersistive) : Stream.of(field);
+      }
 
-  /** tests if the field is one of primary key . */
-  public static final Predicate<Field> isIdentity;
+      /**
+       * tests if the field matches any of values .
+       *
+       * @param field a member of the entity
+       * @param condition a condition for matching, eg. {@link Field#getName()}
+       * @param values values for matching, they must be implemets {@link #equals(Object)}
+       * @return true if the field matches any of values
+       */
+      @SafeVarargs
+      private static <T> boolean matches(final Field field, final Function<Field, T> condition, final T... values) {
+        final Set<T> set = Streamr.stream(values).collect(Collectors.toSet());
+        return set.contains(condition.apply(field));
+      }
+    }
 
-  /** tests if the field is related to a database column . */
-  public static final Predicate<Field> isNotPersistive;
+    /**
+     * a simply structure of the {@link org.seasar.doma.Entity} .
+     *
+     * @author furplag
+     *
+     */
+    public static interface Names {
 
-  /** tests if the field is related to a database column . */
-  public static final Predicate<Field> isPersistive;
+      /**
+       * returns the name which annotated with {@link Table#name() @Table(name)} .
+       *
+       * @param entityClass the class of entity
+       * @return the name specified in Annotation. Or returns null by default
+       */
+      private static String getAlternate(final Class<? extends Origin> entityClass) {
+        return StringUtils.defaultIfBlank(ThrowableFunction.orNull(entityClass.getAnnotation(Table.class), Table::name), null);
+      }
 
-  static {
-    isAnnotated = (field, annotation) -> ThrowableBiPredicate.orNot(field, annotation, Reflections::isAnnotatedWith);
-    theTypeIsAnnotated = (field, annotation) -> ThrowableBiPredicate.orNot(field, annotation, (t, u) -> Reflections.isAnnotatedWith(t.getType(), u));
-    isDomain = (field) -> theTypeIsAnnotated.test(field, Domain.class);
-    isEmbeddable = (field) -> theTypeIsAnnotated.test(field, Embeddable.class);
-    isIdentity = (field) -> isAnnotated.test(field, Id.class);
-    isNotPersistive = Stream.of(Field::isSynthetic, Reflections::isStatic, (Predicate<Field>) (t) -> isAnnotated.test(t, Transient.class)).reduce(Predicate::or).orElse((t) -> true);
-    isPersistive = (field) -> ThrowablePredicate.orNot(field, Predicate.not(isNotPersistive)::test);
+      /**
+       * returns the name which annotated with {@link Column#name() @Column(name)} .
+       *
+       * @param field a member of the entity
+       * @return the name specified in Annotation. Or returns null by default
+       */
+      private static String getAlternate(final Field field) {
+        return StringUtils.defaultIfBlank(ThrowableFunction.orNull(field.getAnnotation(Column.class), Column::name), null);
+      }
+
+      /**
+       * returns the name which converted in the rule of database naming .
+       *
+       * @param entityClass the class of entity
+       * @return the name which converted in the rule of database naming
+       */
+      private static String getDefault(final Class<? extends Origin> entityClass) {
+        return ThrowableBiFunction.orNull(entityClass, getNamingType(entityClass), (t, u) -> u.apply(t.getSimpleName()));
+      }
+
+      /**
+       * returns the name which converted in the rule of database naming .
+       *
+       * @param field a member of the entity
+       * @param namingType the rule of database naming
+       * @return the name which converted in the rule of database naming
+       */
+      private static String getDefault(final Field field, final NamingType namingType) {
+        return ThrowableBiFunction.orDefault(field, namingType, (t, u) -> u.apply(t.getName()), field.getName());
+      }
+
+      /**
+       * returns the name which converted in the rule of database naming .
+       *
+       * @param entityClass the class of entity
+       * @return the name which converted in the rule of database naming
+       */
+      static String getName(final Class<? extends Origin> entityClass) {
+        return StringUtils.defaultIfBlank(getAlternate(entityClass), getDefault(entityClass));
+      }
+
+      /**
+       * returns the name which converted in the rule of database naming .
+       *
+       * @param field a member of the entity
+       * @param namingType the rule of database naming
+       * @return the name which converted in the rule of database naming
+       */
+      static String getName(final Field field, final NamingType namingType) {
+        return StringUtils.defaultIfBlank(getAlternate(field), getDefault(field, namingType));
+      }
+
+      /**
+       * returns {@link NamingType} of specified with {@link org.seasar.doma.Entity#naming() @Entity#naming()} in entity class or parents .
+       *
+       * @param entityClass the class of entity
+       * @return the first result of {@link NamingType NamingType (s) }
+       */
+      static NamingType getNamingType(final Class<? extends Origin> entityClass) {
+        return getNamingType(familyze(entityClass).toArray(Class<?>[]::new)).orElse(NamingType.NONE);
+      }
+
+      /**
+       * returns {@link NamingType} of specified with {@link org.seasar.doma.Entity#naming() @Entity#naming()} in entity class or parents .
+       *
+       * @param classes the type of an entity and parents of
+       * @return the first result of {@link NamingType NamingType (s) }, if exists
+       */
+      private static Optional<NamingType> getNamingType(final Class<?>... classes) {
+        // @formatter:off
+        return Streamr.Filter.filtering(classes, Entities.Names::rejectNone)
+          .map((t) -> t.getAnnotation(org.seasar.doma.Entity.class).naming()).findFirst();
+        // @formatter:on
+      }
+
+      /**
+       * tests if an entity class specified any of {@link NamingType} .
+       *
+       * @param entityClass the class of entity, maybe has specified a {@link NamingType}
+       * @return true if the namingType is null
+       */
+      private static boolean rejectNone(final Class<?> entityClass) {
+
+        return !NamingType.NONE.equals(ThrowableFunction.orNull(entityClass, (t) -> t.getAnnotation(org.seasar.doma.Entity.class).naming()));
+      }
+    }
+
+    /**
+     * returns list of a family of this entity .
+     *
+     * @param <T> the type of entity
+     * @param entityClass the class of entity
+     * @return list of a family of this entity
+     */
+    static <T extends Origin> List<Class<?>> familyze(final Class<T> entityClass) {
+      // @formatter:off
+      return familyzeInternal(entityClass).sorted(Map.Entry.comparingByKey())
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toUnmodifiableList());
+      // @formatter:on
+    }
+
+    /**
+     * just a internal process for {@link #familyze(Class)} .
+     *
+     * @param <T> the type of entity
+     * @param entityClass the class of entity
+     * @return stream of a family of this entity
+     */
+    private static <T extends Origin> Stream<Map.Entry<Integer, Class<?>>> familyzeInternal(final Class<T> entityClass) {
+      final AtomicInteger order = new AtomicInteger();
+      // @formatter:off
+      return Reflections.familyze(entityClass).filter(Entities::isEntity)
+        .map((t) -> Map.entry(order.incrementAndGet(), t));
+      // @formatter:on
+    }
+
+    /**
+     * returns fields which related to a database column .
+     *
+     * @param classes the type of an entity and parents of
+     * @return fields which related to a database column, maybe duplicates
+     */
+    private static Stream<Field> getAllColumnFields(final Class<?>... classes) {
+      return Streamr.stream(classes).map(Reflections::getFields).flatMap(Streamr::stream).flatMap(Columns::flatternyze).filter(Predicates::isPersistive);
+    }
+
+    /**
+     * returns fields which related to a database column .
+     *
+     * @param classes the type of an entity and parents of
+     * @param condition a condition for exclusion, eg. {@link Field#getName()}
+     * @param excludeConditions values for exclusion, they must be implemets {@link #equals(Object)}
+     * @return fields which related to a database column
+     */
+    @SafeVarargs
+    static <T> List<Field> getColumnFields(final Class<?>[] classes, final Function<Field, T> condition, T... excludeConditions) {
+      return getUniqueColumnFields(classes, condition, excludeConditions).sorted(Comparator.comparing((field) -> Predicates.isIdentity(field) ? -1 : 0)).collect(Collectors.toUnmodifiableList());
+    }
+
+    /**
+     * returns fields which related to a database column .
+     *
+     * @param classes the type of an entity and parents of
+     * @param condition a condition for exclusion, eg. {@link Field#getName()}
+     * @param excludeConditions values for exclusion, they must be implemets {@link #equals(Object)}
+     * @return fields which related to a database column
+     */
+    @SafeVarargs
+    private static <T> Stream<Field> getUniqueColumnFields(final Class<?>[] classes, final Function<Field, T> condition, T... excludeConditions) {
+      return Columns.distinct(getAllColumnFields(classes).filter((field) -> !Columns.matches(field, condition, excludeConditions)), condition);
+    }
+
+    /**
+     * tests whether the object annotated with {@link org.seasar.doma.Entity @Entity} .
+     *
+     * @param mysterio the class or an instance of any entity
+     * @return true if the object is an entity
+     */
+    static boolean isEntity(final Object mysterio) {
+      return Reflections.isAnnotatedWith(Reflections.getClass(mysterio), org.seasar.doma.Entity.class);
+    }
   }
 
-  /** the class of referenced entity . */
+  /**
+   * a simply structure of the {@link org.seasar.doma.Entity} .
+   *
+   * @author furplag
+   *
+   */
+  public static interface Predicates {
+
+    /**
+     * tests whether the type of a field annotated with specified {@link Annotation} .
+     *
+     * @param field a member of the entity
+     * @param annotation any of {@link Annotation}
+     * @return true if the type of a field annotated with specified {@link Annotation}
+     */
+    static boolean fieldTypeIsAnnotated(final Field field, Class<? extends Annotation> annotation) {
+      return ThrowableBiPredicate.orNot(field, annotation, (t, u) -> Reflections.isAnnotatedWith(t.getType(), u));
+    }
+
+    /**
+     * tests whether the field annotated with specified {@link Annotation} .
+     *
+     * @param mysterio the type of an entity, or field of the entity
+     * @param annotation any of {@link Annotation}
+     * @return true if the field annotated with specified {@link Annotation}
+     */
+    static boolean isAnnotated(AccessibleObject mysterio, Class<? extends Annotation> annotation) {
+      return ThrowableBiPredicate.orNot(mysterio, annotation, Reflections::isAnnotatedWith);
+    }
+
+    /**
+     * tests if the field type is {@link Domain @Domain} in DOMA .
+     *
+     * @param field a member of the entity
+     * @return true if the field type is {@link Domain @Domain} in DOMA
+     */
+    static boolean isDomain(final Field field) {
+      return fieldTypeIsAnnotated(field, Domain.class);
+    }
+
+    /**
+     * tests if the field type is the class which contains field (s) which related to a database column .
+     *
+     * @param field a member of the entity
+     * @return true if the field is one of primary key
+     */
+    static boolean isEmbeddable(final Field field) {
+      return fieldTypeIsAnnotated(field, Embeddable.class);
+    }
+
+    /**
+     * tests if the field is one of primary key .
+     *
+     * @param field a member of the entity
+     * @return true if the field is one of primary key
+     */
+    static boolean isIdentity(final Field field) {
+      return isAnnotated(field, Id.class);
+    }
+
+    /**
+     * tests if the field does not related to a database column .
+     *
+     * @param field a member of the entity
+     * @return true if the field does not related to a database column
+     */
+    static boolean isNotPersistive(final Field field) {
+      return Streamr.Filter.anyOf(Streamr.stream(field), Field::isSynthetic, Reflections::isStatic, (t) -> isAnnotated(t, Transient.class)).count() > 0;
+    }
+
+    /**
+     * tests if the field is related to a database column .
+     *
+     * @param field a member of the entity
+     * @return true if the field is related to a database column
+     */
+    static boolean isPersistive(final Field field) {
+      return ThrowablePredicate.orNot(field, Predicate.not(Predicates::isNotPersistive)::test);
+    }
+  }
+
+  /** the type of an entity which has referred by this inspector . */
   @NonNull
-  @Getter(AccessLevel.PROTECTED)
   private final Class<T> entityClass;
 
+  /** the types a family of this {@link #entityClass} . */
+  @Getter(lazy = true, value = AccessLevel.PROTECTED)
+  private final List<Class<?>> classes = Entities.familyze(entityClass);
+
   /** {@link NamingType} which specified this {@link #entityClass} . */
-  @NonNull
-  @Getter
-  private final NamingType namingType;
+  @Getter(lazy = true)
+  private final NamingType namingType = Entities.Names.getNamingType(getClasses().toArray(Class<?>[]::new)).orElse(NamingType.NONE);
+
+  /** the fields a member of this {@link #entityClass} which related to a database column . */
+  @Getter(lazy = true)
+  private final List<Field> fields = getFieldsLazily(getClasses().toArray(Class<?>[]::new));
+
+  /** the fields a member of this {@link #entityClass} which related to a database column . */
+  @Getter(lazy = true)
+  private final Map<String, Field> fieldMap = Streamr.collect(getFields().stream().flatMap((field) -> Stream.of( Map.entry(field.getName(), field), Map.entry(getName(field), field))), (a, b) -> a, HashMap::new);
 
   /**
+   * initializing {@link #fields} lazily .
    *
-   * @param entityClass the class of referenced entity
-   * @throws IllegalArgumentException an entity class have to annotate with {@link Entity @Entity}
+   * @param classes the type of an entity and parents of
+   * @return the fields a member of this {@link #entityClass} which related to a database column
    */
-  protected Inspector(Class<T> entityClass) {
-    this.entityClass = Objects.requireNonNull(entityClass);
-    this.namingType = getNamingType(Reflections.familyze(entityClass)).orElse(NamingType.NONE);
-    Optional.ofNullable(entityClass.getAnnotation(Entity.class)).orElseThrow(IllegalArgumentException::new);
+  private static List<Field> getFieldsLazily(final Class<?>... classes) {
+    return Entities.getColumnFields(classes, (field) -> Entities.Names.getName(field, Entities.Names.getNamingType(classes).orElse(NamingType.NONE)));
   }
 
   /**
-   * just a internal process for {@link #getNamingType(Object, NamingType)} .
+   * a static factory of {@link Inspector} .
    *
-   * @param entityClasses stream of class
-   * @return the first result of {@link NamingType NamingType (s) }
+   * @param <T> the type of entity
+   * @param entityClass the type of entity .
+   * @return an inspector
    */
-  private static Optional<NamingType> getNamingType(final Stream<Class<?>> entityClasses) {
-    // @formatter:off
-    return entityClasses.map((t) -> ThrowableFunction.orNull(t, (x) -> x.getAnnotation(Entity.class).naming()))
-      .filter(Inspector::rejectNone).findFirst();
-    // @formatter:on
+  public static <T extends jp.furplag.sandbox.domino.misc.origin.Origin> Inspector<T> of(final Class<T> entityClass) {
+    return new Inspector<>(entityClass);
   }
 
   /**
-   * just a internal process for filtering {@link NamingType} which do nothing .
+   * returns fields which related to a database column .
    *
-   * @param namingType {@link NamingType}, maybe null
-   * @return true if the namingType equals {@link NamingType#NONE} or null
+   * @param condition a condition for exclusion, eg. {@link Field#getName()}
+   * @param excludeConditions values for exclusion, they must be implemets {@link #equals(Object)}
+   * @return fields which related to a database column
    */
-  private static boolean rejectNone(final NamingType namingType) {
-    return !Objects.requireNonNullElse(namingType, NamingType.NONE).equals(NamingType.NONE);
-  }
-
-  /**
-   * returns the name which annotated with {@link Table#name() @Table(name)} .
-   *
-   * @return the name specified in Annotation. Or returns null by default
-   */
-  private final String getAlternate() {
-    return StringUtils.defaultIfBlank(ThrowableFunction.orNull(entityClass.getAnnotation(Table.class), Table::name), null);
-  }
-
-  /**
-   * returns the name which converted in the rule of database naming .
-   *
-   * @return the name which converted in the rule of database naming
-   */
-  private final String getDefault() {
-    return ThrowableBiFunction.orDefault(entityClass, getNamingType(), (t, u) -> u.apply(t.getSimpleName()), entityClass.getSimpleName());
+  @SafeVarargs
+  public final <R> List<Field> getFields(Function<Field, R> condition, R... excludeConditions) {
+    return Entities.getColumnFields(getClasses().toArray(Class<?>[]::new), condition, excludeConditions);
   }
 
   /**
@@ -151,17 +442,16 @@ public abstract class Inspector<T extends Origin> {
    * @return the name which converted in the rule of database naming
    */
   public final String getName() {
-    return Optional.ofNullable(getAlternate()).orElse(getDefault());
+    return Entities.Names.getName(entityClass);
   }
 
   /**
-   * returns an inspector of defaults .
+   * returns the name which converted in the rule of database naming .
    *
-   * @param <T> the type of entity
-   * @param entityClass the class of referenced entity
-   * @return {@link Inspector}
+   * @param field a member of the entity
+   * @return the name which converted in the rule of database naming
    */
-  public static <T extends Origin> Inspector<T> defaultInspector(final Class<T> entityClass) {
-    return new Inspector<>(entityClass) {};
+  public final String getName(Field field) {
+    return Entities.Names.getName(field, getNamingType());
   }
 }

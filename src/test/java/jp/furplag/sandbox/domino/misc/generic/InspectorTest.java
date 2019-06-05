@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.seasar.doma.Column;
@@ -32,88 +31,91 @@ import org.seasar.doma.Table;
 import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.entity.NamingType;
 
+import jp.furplag.sandbox.domino.misc.TestConfig;
+import jp.furplag.sandbox.domino.misc.origin.EntityOrigin;
 import jp.furplag.sandbox.domino.misc.origin.Origin;
-import jp.furplag.sandbox.reflect.Reflections;
 import jp.furplag.sandbox.stream.Streamr;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 class InspectorTest {
 
-  public static class NotAnEntity implements Origin {}
+  public static final org.seasar.doma.jdbc.Config config = TestConfig.singleton();
 
-  public static interface Zero extends Origin {
+  @Data
+  public static class Zero implements EntityOrigin {
 
-    @Entity(naming = NamingType.LOWER_CASE)
-    public static class One implements Zero {
-
-      public static final String nope = "Nope";
+    @Column(name = "whatever")
+    private static final String nope = "this is not a database column .";
+    @Entity(naming = NamingType.UPPER_CASE)
+    public static class One extends Zero {
 
       @Transient
-      public int zero;
+      int zero;
 
       @Id
-      public String one;
+      long one;
 
-      public String two;
+      String two;
 
-      @Column(name = "three")
-      public String alternate;
+      @Column(name = "thr33")
+      String three;
 
-      public Four four;
+      Four four;
 
-      public Five five;
+      Five five;
 
-      @Table(name = "")
+      @Transient
+      Five six;
+
       @Entity
       public static class Two extends Zero.One {
-        @Table(name = "three")
-        @Entity(naming = NamingType.UPPER_CASE)
-        public static class Alternate extends Zero.One.Two {
-          @Entity
-          public static class Four extends Zero.One.Two.Alternate {}
+        @Entity(naming = NamingType.SNAKE_LOWER_CASE)
+        public static class Three extends Zero.One.Two {
+
+          long thr33;
+
+          @Entity(naming = NamingType.NONE)
+          @Table(name = "")
+          public static class Four extends Zero.One.Two.Three {
+            @Table(name = "five_SIX_7")
+            public static class Five extends Zero.One.Two.Three.Four {
+
+            }
+          }
         }
       }
     }
   }
 
-  @Entity
-  public static class One implements Origin {}
-
   @Data
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Domain(acceptNull = false, valueType = boolean.class)
-  public static final class Four {
-    public static final String nope = "Nope";
-
-    public boolean value;
-
-    public boolean getValue() {
-      return value;
-    }
+  public static class One implements EntityOrigin {
   }
 
-  @Data
-  @NoArgsConstructor
-  @AllArgsConstructor
+  @Value
+  @Domain(valueType = int.class)
+  public static class Four {
+    int value;
+  }
+
+  @Value
+  @RequiredArgsConstructor
   @Embeddable
-  public static final class Five {
-    public static final String nope = "Nope";
+  public static class Five {
 
     @Transient
-    public int zero;
+    int zeroOneTwoThreeFour;
 
-    public int one;
+    int five;
 
-    public int two;
+    int six;
 
-    @Column(name = "four")
-    public int three;
+    @Column(name = "se7en")
+    int seven;
 
-    public Five(int one, int two, int three) {
-      this(0, one, two, three);
+    public Five(int five, int six, int seven) {
+      this(0, five, six, seven);
     }
   }
 
@@ -121,10 +123,21 @@ class InspectorTest {
   void test() {
     // @formatter:off
     assertAll(
-        () -> assertThrows(NullPointerException.class, () -> Inspector.defaultInspector(null))
-      , () -> assertThrows(IllegalArgumentException.class, () -> Inspector.defaultInspector(Origin.class))
-      , () -> assertThrows(IllegalArgumentException.class, () -> new NotAnEntity().inspector())
-      , () -> assertNotNull(Inspector.defaultInspector(One.class))
+        () -> assertArrayEquals(new Class<?>[] { Zero.One.class }, new Zero.One().inspector().getClasses().toArray(Class<?>[]::new))
+      , () -> assertArrayEquals(new Class<?>[] { Zero.One.Two.Three.Four.class, Zero.One.Two.Three.class, Zero.One.Two.class, Zero.One.class }, new Zero.One.Two.Three.Four().inspector().getClasses().toArray(Class<?>[]::new))
+    );
+    // @formatter:on
+
+    // @formatter:off
+    assertAll(
+        () -> assertThrows(NullPointerException.class, () -> Inspector.of(null))
+      , () -> assertEquals(new Origin() {}.inspector(), Inspector.of(Origin.class))
+      , () -> assertEquals(Inspector.of(Origin.class), Inspector.of(Zero.class))
+      , () -> assertEquals(Inspector.of(Zero.One.class), Inspector.of(Zero.One.class))
+      , () -> assertEquals(new Zero.One().inspector(), Inspector.of(Zero.One.class))
+      , () -> assertNotEquals(Inspector.of(Zero.One.class), Inspector.of(Zero.One.Two.class))
+      , () -> assertNotEquals(Inspector.of(Zero.class), Inspector.of(Zero.One.class))
+      , () -> assertNotEquals(Inspector.of(One.class), Inspector.of(Zero.One.class))
     );
     // @formatter:on
   }
@@ -133,11 +146,21 @@ class InspectorTest {
   void testNamingType() {
     // @formatter:off
     assertAll(
-        () -> assertEquals("one", new Zero.One().getName())
-      , () -> assertEquals("two", new Zero.One.Two().getName())
-      , () -> assertEquals("three", new Zero.One.Two.Alternate().getName())
-      , () -> assertEquals("FOUR", new Zero.One.Two.Alternate.Four().getName())
-      , () -> assertEquals("One", new One().getName())
+        () -> assertEquals("ONE", new Zero.One().inspector().getName())
+      , () -> assertEquals("TWO", new Zero.One.Two().inspector().getName())
+      , () -> assertEquals("three", new Zero.One.Two.Three().inspector().getName())
+      , () -> assertEquals("four", new Zero.One.Two.Three.Four().inspector().getName())
+      , () -> assertEquals("One", new One().inspector().getName())
+    );
+    // @formatter:on
+
+    // @formatter:off
+    assertAll(
+        () -> assertEquals("", new Zero().inspector().getFields().stream().map((t) -> new Zero().inspector().getName(t)).collect(Collectors.joining(", ")))
+      , () -> assertEquals("", new One().inspector().getFields().stream().map((t) -> new One().inspector().getName(t)).collect(Collectors.joining(", ")))
+      , () -> assertEquals("ONE, TWO, thr33, FOUR, FIVE, SIX, se7en", new Zero.One().inspector().getFields().stream().map((t) -> new Zero.One().inspector().getName(t)).collect(Collectors.joining(", ")))
+      , () -> assertEquals("ONE, TWO, thr33, FOUR, FIVE, SIX, se7en", new Zero.One.Two().inspector().getFields().stream().map((t) -> new Zero.One.Two().inspector().getName(t)).collect(Collectors.joining(", ")))
+      , () -> assertEquals("one, thr33, two, four, five, six, se7en", new Zero.One.Two.Three().inspector().getFields().stream().map((t) -> new Zero.One.Two.Three().inspector().getName(t)).collect(Collectors.joining(", ")))
     );
     // @formatter:on
   }
@@ -146,12 +169,19 @@ class InspectorTest {
   void paintItGreen() {
     // @formatter:off
     assertAll(
-          () -> assertEquals("one", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isIdentity).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("four", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isDomain).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("five", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isEmbeddable).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("one, two, alternate, four, five", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isPersistive).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals(Stream.concat(Stream.of("nope", "zero"), Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Field::isSynthetic).map(Field::getName)).collect(Collectors.joining(", ")), Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isNotPersistive).map(Field::getName).collect(Collectors.joining(", ")))
+        () -> assertEquals("one", Streamr.Filter.filtering(Inspector.of(Zero.One.class).getFields(), Inspector.Predicates::isIdentity).map(Field::getName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("four", Streamr.Filter.filtering(Inspector.of(Zero.One.class).getFields(), Inspector.Predicates::isDomain).map(Field::getName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("one, two, three, four, five, six, seven", Streamr.Filter.filtering(Inspector.of(Zero.One.class).getFields(), Inspector.Predicates::isPersistive).map(Field::getName).collect(Collectors.joining(", ")))
+    );
+    // @formatter:on
+
+    // @formatter:off
+    assertAll(
+        () -> assertEquals("long, String, String, Four, int, int, int", Inspector.of(Zero.One.class).getFields().stream().map(Field::getType).map(Class::getSimpleName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("long, String, String, Four, int, int, int", Inspector.of(Zero.One.Two.class).getFields().stream().map(Field::getType).map(Class::getSimpleName).collect(Collectors.joining(", ")))
+      , () -> assertEquals("long, long, String, Four, int, int, int", Inspector.of(Zero.One.Two.Three.class).getFields().stream().map(Field::getType).map(Class::getSimpleName).collect(Collectors.joining(", ")))
     );
     // @formatter:on
   }
+
 }

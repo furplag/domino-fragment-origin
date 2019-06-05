@@ -19,17 +19,12 @@ package jp.furplag.sandbox.domino.misc.origin;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
-import java.util.Comparator;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.seasar.doma.Column;
 import org.seasar.doma.Domain;
 import org.seasar.doma.Embeddable;
 import org.seasar.doma.Entity;
-import org.seasar.doma.GeneratedValue;
-import org.seasar.doma.GenerationType;
 import org.seasar.doma.Id;
 import org.seasar.doma.Table;
 import org.seasar.doma.Transient;
@@ -38,92 +33,82 @@ import org.seasar.doma.jdbc.entity.NamingType;
 
 import jp.furplag.sandbox.domino.misc.TestConfig;
 import jp.furplag.sandbox.domino.misc.generic.Inspector;
-import jp.furplag.sandbox.domino.misc.vars.Var;
-import jp.furplag.sandbox.reflect.Reflections;
-import jp.furplag.sandbox.stream.Streamr;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 class EntityOriginTest {
 
+  public static final org.seasar.doma.jdbc.Config config = TestConfig.singleton();
+
   @Data
-  @Entity
   public static class Zero implements EntityOrigin {
 
-    @Data
-    @EqualsAndHashCode(callSuper = true)
+    @Column(name = "whatever")
+    private static final String nope = "this is not a database column .";
     @Entity(naming = NamingType.UPPER_CASE)
     public static class One extends Zero {
 
-      public static final int nope = 123;
+      @Transient
+      int zero;
 
       @Id
-      @GeneratedValue(strategy = GenerationType.IDENTITY)
-      public long primaryKey;
+      long one;
 
-      @Column(name = "rename_this_field")
-      public int alternate;
+      String two;
 
-      public Toggle toggle;
+      @Column(name = "thr33")
+      String three;
 
-      public Abc aBc;
+      Four four;
+
+      Five five;
 
       @Transient
-      public int ignore;
+      Five six;
 
-      @Data
-      @EqualsAndHashCode(callSuper = true)
-      @Entity
-      public static class Two extends One {
-
-        @Data
-        @EqualsAndHashCode(callSuper = true)
+      public static class Two extends Zero.One {
         @Entity(naming = NamingType.SNAKE_LOWER_CASE)
-        public static class Three extends Two {
+        public static class Three extends Zero.One.Two {
 
-          @Data
-          @EqualsAndHashCode(callSuper = true)
-          @Entity
+          long thr33;
+
+          @Entity(naming = NamingType.NONE)
           @Table(name = "")
-          public static class Four extends Three {
-            @Data
-            @EqualsAndHashCode(callSuper = true)
-            @Entity
-            @Table(name = "five_six.se7en")
-            public static class Five extends Four {}
+          public static class Four extends Zero.One.Two.Three {
+            @Table(name = "five_SIX_7")
+            public static class Five extends Zero.One.Two.Three.Four {
+
+            }
           }
         }
       }
     }
   }
 
-  @Data
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @Domain(valueType = String.class)
-  public static class Toggle {
-    public String value;
+  @Value
+  @Domain(valueType = int.class)
+  public static class Four {
+    int value;
   }
 
-  @Data
-  @NoArgsConstructor
-  @AllArgsConstructor
+  @Value
+  @RequiredArgsConstructor
   @Embeddable
-  public static class Abc {
+  public static class Five {
+
     @Transient
-    public int ignore;
+    int zeroOneTwoThreeFour;
 
-    public String a;
+    int five;
 
-    public String b;
+    int six;
 
-    @Column(name = "C")
-    public String c;
+    @Column(name = "se7en")
+    int seven;
 
-    public Abc(String a, String b, String c) {
-      this(0, a, b, c);
+    public Five(int five, int six, int seven) {
+      this(0, five, six, seven);
     }
   }
 
@@ -131,73 +116,33 @@ class EntityOriginTest {
   void test() {
     // @formatter:off
     assertAll(
-        () -> assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-      , () -> assertEquals("select PRIMARYKEY, rename_this_field, TOGGLE, A, B, C from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-      , () -> assertEquals("select PRIMARYKEY, rename_this_field, TOGGLE, A, B, C from TWO", new Zero.One.Two().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-      , () -> assertEquals("select primary_key, rename_this_field, toggle, a, b, C from three", new Zero.One.Two.Three().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-      , () -> assertEquals("select primary_key, rename_this_field, toggle, a, b, C from four", new Zero.One.Two.Three.Four().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-      , () -> assertEquals("select primary_key, rename_this_field, toggle, a, b, C from five_six.se7en", new Zero.One.Two.Three.Four.Five().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-    );
-    // @formatter:on
-    // @formatter:off
-    assertAll(
-        () -> assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(TestConfig.singleton()), "one", "two", "three").getSql().toString())
-      , () -> assertEquals("select PRIMARYKEY, rename_this_field, TOGGLE, A, B, C from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), "one", "two", "three").getSql().toString())
-      , () -> assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), new Zero.One().getColumns().stream().map(Var::getFieldName).collect(Collectors.joining(", ")).split(", ")).getSql().toString())
-      , () -> assertEquals("select PRIMARYKEY from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton()), new Zero.One().getColumns().stream().filter((t) -> !Inspector.isIdentity.test(t.getField())).map(Var::getFieldName).collect(Collectors.joining(", ")).split(", ")).getSql().toString())
+        () -> assertEquals("select * from EntityOriginTest$1", new EntityOrigin() {}.select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select * from default", new EntityOrigin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString())
+
+      , () -> assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from TWO", new Zero.One.Two().select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select one, thr33, two, four, five, six, se7en from three", new Zero.One.Two.Three().select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select one, thr33, two, four, five, six, se7en from four", new Zero.One.Two.Three.Four().select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select one, thr33, two, four, five, six, se7en from five_SIX_7", new Zero.One.Two.Three.Four.Five().select(SelectBuilder.newInstance(config)).getSql().toString())
+
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), (String) null).getSql().toString())
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), (String[]) null).getSql().toString())
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), new String[] {}).getSql().toString())
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), null, null, null).getSql().toString())
+      , () -> assertEquals("select ONE, TWO, thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), "ONE", "TWO", "thr33").getSql().toString())
+      , () -> assertEquals("select thr33, FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), "one", "two", "thr33").getSql().toString())
+      , () -> assertEquals("select FOUR, FIVE, SIX, se7en from ONE", new Zero.One().select(SelectBuilder.newInstance(config), "one", "two", "three").getSql().toString())
+      , () -> assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(config), Inspector.of(Zero.One.class).getFields().stream().map(Field::getName).toArray(String[]::new)).getSql().toString())
+
+      , () -> assertEquals("select one, thr33, two, four, five, six, se7en from three", new Zero.One.Two.Three().select(SelectBuilder.newInstance(config), "three").getSql().toString())
+      , () -> assertEquals("select one, two, four, five, six, se7en from three", new Zero.One.Two.Three().select(SelectBuilder.newInstance(config), "thr33").getSql().toString())
+      , () -> assertEquals(long.class, new Zero.One.Two.Three().inspector().getFields((t) -> new Zero.One.Two.Three().inspector().getName(t), "three").stream().filter((t) -> "thr33".equals(new Zero.One.Two.Three().inspector().getName(t))).map(Field::getType).findFirst().orElse(null))
     );
     // @formatter:on
   }
 
   @Test
   void paintItGreen() {
-    // @formatter:off
-    assertAll(
-        () -> assertEquals(NamingType.NONE, new Zero().getNamingType())
-      , () -> assertEquals(NamingType.UPPER_CASE, new Zero.One().getNamingType())
-      , () -> assertEquals(NamingType.UPPER_CASE, new Zero.One.Two().getNamingType())
-    );
-    // @formatter:on
-
-    // @formatter:off
-    assertAll(
-        () -> assertEquals("", new Zero().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("PRIMARYKEY, rename_this_field, TOGGLE, A, B, C", new Zero.One.Two().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three.Four().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
-      , () -> assertEquals("primary_key, rename_this_field, toggle, a, b, C", new Zero.One.Two.Three.Four.Five().getColumns().stream().map(Var::getColumnName).collect(Collectors.joining(", ")))
-    );
-    // @formatter:on
-
-    // @formatter:off
-    assertAll(
-          () -> assertEquals("primaryKey", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isIdentity).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("toggle", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isDomain).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isEmbeddable).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isNotPersistive).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("primaryKey, alternate, toggle, a, b, c", new Zero.One().getColumns().stream().map(Var::getField).filter(Inspector.isPersistive).map(Field::getName).collect(Collectors.joining(", ")))
-        , () -> assertEquals("nope, ignore", Streamr.stream(Reflections.getFields(Zero.One.class)).filter(Inspector.isNotPersistive).filter(Predicate.not(Field::isSynthetic)).map(Field::getName).collect(Collectors.joining(", ")))
-    );
-    // @formatter:on
-
-    // @formatter:off
-    assertAll(
-          () -> assertEquals(new Zero.One().getColumns().stream().findFirst().orElse(null).getKey(), new Zero.One().getColumns().stream().findFirst().orElse(null).getFieldName())
-        , () -> assertEquals(0L, new Zero.One().getColumns().stream().findFirst().orElse(null).getValue())
-        , () -> assertEquals(long.class, new Zero.One().getColumns().stream().findFirst().orElse(null).getValueType())
-        , () -> assertThrows(UnsupportedOperationException.class, () -> new Var.Origin<>(new Zero.One(), Reflections.getField(Zero.One.class, "primaryKey")).setValue(100L))
-        , () -> assertEquals("alternate", new Zero.One().getColumns().stream().sorted(Comparator.reverseOrder()).findFirst().orElse(null).getKey())
-        , () -> assertEquals(1, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(null))
-        , () -> assertEquals(0, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(new Zero.One().getColumns().stream().findFirst().orElse(null)))
-        , () -> assertEquals(-1, new Zero.One().getColumns().stream().findFirst().orElse(null).compareTo(new Zero.One().getColumns().stream().filter((t) -> "toggle".equals(t.getKey())).findFirst().orElse(null)))
-    );
-    // @formatter:on
-
-    // @formatter:off
-    assertAll(
-        () -> assertEquals("select PRIMARYKEY, rename_this_field, TOGGLE, A, B, C from ONE", new Zero.One().select(SelectBuilder.newInstance(TestConfig.singleton())).getSql().toString())
-    );
-    // @formatter:on
   }
 }

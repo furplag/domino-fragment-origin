@@ -16,7 +16,7 @@
 
 package jp.furplag.sandbox.domino.misc.origin;
 
-import java.util.HashSet;
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -24,8 +24,6 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 
-import jp.furplag.sandbox.domino.misc.generic.EntityInspector;
-import jp.furplag.sandbox.domino.misc.vars.Var;
 import jp.furplag.sandbox.stream.Streamr;
 
 /**
@@ -37,42 +35,6 @@ import jp.furplag.sandbox.stream.Streamr;
 public interface EntityOrigin extends Origin {
 
   /**
-   * returns database columns defined in this entity .
-   *
-   * @param columns database columns
-   * @param excludeFieldNames field name (s) which excludes from result
-   * @return stream of database columns
-   */
-  private static Stream<Var<?>> filteredColumns(final List<Var<?>> columns, final Set<String> excludeFieldNames) {
-    return Streamr.Filter.filtering(columns, (t) -> !excludeFieldNames.contains(t.getFieldName()));
-  }
-
-  /**
-   * just an internal processfor {@link #getColumns()} .
-   *
-   * @param database columns
-   * @return list of database columns
-   */
-  private static List<Var<?>> flatternyze(final Stream<Var<?>> columns) {
-    return columns.flatMap(Var::flatternyze).sorted().collect(Collectors.toUnmodifiableList());
-  }
-
-  /**
-   * returns database columns defined in this entity .
-   *
-   * @return list of database columns
-   */
-  default List<Var<?>> getColumns() {
-    return flatternyze(inspector().getFields().values().stream().map((t) -> new Var.Origin<>(this, t)));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  default EntityInspector<?> inspector() {
-    return new EntityInspector<>(getClass());
-  }
-
-  /**
    * returns database column names defined in this entity .
    *
    * @param excludeFieldNames field name (s) which excludes from result
@@ -80,6 +42,21 @@ public interface EntityOrigin extends Origin {
    */
   @Override
   default String selectColumnNames(String... excludeFieldNames) {
-    return StringUtils.defaultIfBlank(filteredColumns(getColumns(), Streamr.collect(HashSet::new, excludeFieldNames)).map(Var::getColumnName).collect(Collectors.joining(", ")), Origin.super.selectColumnNames());
+    return StringUtils.defaultIfBlank(getFields(inspector().getFields(), excludes(excludeFieldNames)).map(inspector()::getName).collect(Collectors.joining(", ")), Origin.super.selectColumnNames());
+  }
+
+  /**
+   * returns database columns defined in this entity .
+   *
+   * @param columns database columns
+   * @param excludeFieldNames field name (s) which excludes from result
+   * @return stream of database columns
+   */
+  private static Stream<Field> getFields(final List<Field> fields, final Set<String> excludeFieldNames) {
+    return Streamr.Filter.filtering(fields, (t) -> !excludeFieldNames.contains(t.getName()));
+  }
+
+  private static Set<String> excludes(final String... excludeFieldNames) {
+    return Streamr.stream(excludeFieldNames).collect(Collectors.toUnmodifiableSet());
   }
 }
