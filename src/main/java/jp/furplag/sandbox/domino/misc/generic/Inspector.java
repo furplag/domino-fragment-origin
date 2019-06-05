@@ -20,7 +20,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +64,23 @@ import lombok.ToString;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(of = { "classes", "fields", "namingType" })
 @ToString(of = { "entityClass" })
-public class Inspector<T extends jp.furplag.sandbox.domino.misc.origin.Origin> {
+public class Inspector<T extends Origin> {
+
+  /** the type of an entity which has referred by this inspector . */
+  @NonNull
+  private final Class<T> entityClass;
+
+  /** the types a family of this {@link #entityClass} . */
+  @Getter(lazy = true, value = AccessLevel.PROTECTED)
+  private final List<Class<?>> classes = Entities.familyze(entityClass);
+
+  /** {@link NamingType} which specified this {@link #entityClass} . */
+  @Getter(lazy = true)
+  private final NamingType namingType = Entities.Names.getNamingType(getClasses().toArray(Class<?>[]::new)).orElse(NamingType.NONE);
+
+  /** the fields a member of this {@link #entityClass} which related to a database column . */
+  @Getter(lazy = true)
+  private final List<Field> fields = getFieldsLazily(getClasses().toArray(Class<?>[]::new));
 
   /**
    * a simply structure of the {@link org.seasar.doma.Entity} .
@@ -383,26 +398,6 @@ public class Inspector<T extends jp.furplag.sandbox.domino.misc.origin.Origin> {
     }
   }
 
-  /** the type of an entity which has referred by this inspector . */
-  @NonNull
-  private final Class<T> entityClass;
-
-  /** the types a family of this {@link #entityClass} . */
-  @Getter(lazy = true, value = AccessLevel.PROTECTED)
-  private final List<Class<?>> classes = Entities.familyze(entityClass);
-
-  /** {@link NamingType} which specified this {@link #entityClass} . */
-  @Getter(lazy = true)
-  private final NamingType namingType = Entities.Names.getNamingType(getClasses().toArray(Class<?>[]::new)).orElse(NamingType.NONE);
-
-  /** the fields a member of this {@link #entityClass} which related to a database column . */
-  @Getter(lazy = true)
-  private final List<Field> fields = getFieldsLazily(getClasses().toArray(Class<?>[]::new));
-
-  /** the fields a member of this {@link #entityClass} which related to a database column . */
-  @Getter(lazy = true)
-  private final Map<String, Field> fieldMap = Streamr.collect(getFields().stream().flatMap((field) -> Stream.of( Map.entry(field.getName(), field), Map.entry(getName(field), field))), (a, b) -> a, HashMap::new);
-
   /**
    * initializing {@link #fields} lazily .
    *
@@ -420,7 +415,7 @@ public class Inspector<T extends jp.furplag.sandbox.domino.misc.origin.Origin> {
    * @param entityClass the type of entity .
    * @return an inspector
    */
-  public static <T extends jp.furplag.sandbox.domino.misc.origin.Origin> Inspector<T> of(final Class<T> entityClass) {
+  public static <T extends Origin> Inspector<T> of(final Class<T> entityClass) {
     return new Inspector<>(entityClass);
   }
 
