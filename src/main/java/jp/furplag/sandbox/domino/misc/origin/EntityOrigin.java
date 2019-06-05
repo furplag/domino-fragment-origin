@@ -19,6 +19,7 @@ package jp.furplag.sandbox.domino.misc.origin;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -42,7 +43,7 @@ public interface EntityOrigin extends Origin {
    */
   @Override
   default String selectColumnNames(String... excludeFieldNames) {
-    return StringUtils.defaultIfBlank(getFields(inspector().getFields(), excludes(excludeFieldNames)).map(inspector()::getName).collect(Collectors.joining(", ")), Origin.super.selectColumnNames());
+    return StringUtils.defaultIfBlank(toString(getFields(inspector().getFields(), excludes(excludeFieldNames)), inspector()::getName), Origin.super.selectColumnNames());
   }
 
   /**
@@ -58,5 +59,10 @@ public interface EntityOrigin extends Origin {
 
   private static Set<String> excludes(final String... excludeFieldNames) {
     return Streamr.stream(excludeFieldNames).collect(Collectors.toUnmodifiableSet());
+  }
+
+
+  private static <T> String toString(final Stream<T> stream, final Function<T, String> toString) {
+    return Streamr.stream(stream).map(toString).collect(Collectors.joining(", "));
   }
 }
