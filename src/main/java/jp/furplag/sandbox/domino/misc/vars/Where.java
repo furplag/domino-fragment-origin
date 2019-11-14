@@ -1,12 +1,17 @@
 /**
  * Copyright (C) 2019+ furplag (https://github.com/furplag)
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package jp.furplag.sandbox.domino.misc.vars;
 
@@ -27,35 +32,36 @@ public interface Where<T> extends Comparable<Where<?>> {
    * @author furplag
    *
    */
+  @Getter
   public static enum Operator {
     // @formatter:off
-    Null("is", true), NotNull("is", true, true),
-    Equal("="), NotEqual("=", false, true),
-    Contains("like"), EndsWith("like"), StartsWith("like"),
-    Except("like", false, true), NotEndsWith("like", false, true), NotStartsWith("like", false, true),
+    Null("is", true), NotNull("is", true, true, false),
+    Equal("="), NotEqual("=", false, true, false),
+    Contains("like", false, false, true), EndsWith("like", false, false, true), StartsWith("like", false, false, true),
+    Except("like", false, true, true), NotEndsWith("like", false, true, true), NotStartsWith("like", false, true, true),
     GreaterThan(">"), GreaterThanEqual(">="),
     LessThan("<"), LessThanEqual("<="),
-    Includes("in"), Excludes("in", false, true);
+    Includes("in"), Excludes("in", false, true, false);
     // @formatter:on
 
     /** conditional operator of where clause . */
-    @Getter
     private final String operator;
 
     /** conditional operator of where clause to filtering null values . */
-    @Getter
     private final boolean nullFinder;
 
     /** conditional operator of where clause to negation . */
-    @Getter
     private final boolean negate;
+
+    /** conditional operator of where clause to search keyword . */
+    private final boolean searcher;
 
     /**
      *
      * @param operator conditional operator of where clause
      */
     private Operator(String operator) {
-      this(operator, false, false);
+      this(operator, false, false, false);
     }
 
     /**
@@ -63,17 +69,18 @@ public interface Where<T> extends Comparable<Where<?>> {
      * @param operator conditional operator of where clause
      */
     private Operator(String operator, boolean nullFinder) {
-      this(operator, nullFinder, false);
+      this(operator, nullFinder, false, false);
     }
 
     /**
      *
      * @param operator conditional operator of where clause
      */
-    private Operator(String operator, boolean nullFinder, boolean negate) {
+    private Operator(String operator, boolean nullFinder, boolean negate, boolean searcher) {
       this.operator = StringUtils.defaultIfBlank(operator, "=");
       this.nullFinder = nullFinder;
       this.negate = negate;
+      this.searcher = searcher;
     }
   }
 
@@ -89,7 +96,7 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     @Override
     public SelectBuilder sql(SelectBuilder selectBuilder) {
-      return selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), " (")).params(getVar().getValueType(), getVar().getValues()).sql(") ");
+      return selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), "(")).params(getVar().getValueType(), getVar().getValues()).sql(")");
     }
   }
 
@@ -188,7 +195,7 @@ public interface Where<T> extends Comparable<Where<?>> {
   Var<T> getVar();
 
   default SelectBuilder sql(SelectBuilder selectBuilder) {
-    selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), getOperator().isNullFinder() ? "NULL " : ""));
+    selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), getOperator().isNullFinder() ? "NULL" : ""));
 
     return getOperator().isNullFinder() ? selectBuilder : selectBuilder.param(getVar().getValueType(), getVar().getValue());
   }

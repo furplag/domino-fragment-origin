@@ -165,8 +165,8 @@ class ConditionallyTest {
     assertEquals("select PRIMARYKEY, rename_this_field, A, B from ONE", new Zero.One().select(SelectBuilder.newInstance(config), new String[] {"one", "toggle", "c"}, new String[] {}).getSql().toString());
     /* @formatter:on */
 
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE = ?", new Zero.One().autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE = ?", new Zero.One().autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE = ? order by PRIMARYKEY", new Zero.One().autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE = ? order by PRIMARYKEY", new Zero.One().autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
 
     Zero.One one = new Zero.One();
     one.toggle = null;
@@ -174,38 +174,7 @@ class ConditionallyTest {
     one.where("c", Where.Operator.NotNull);
     one.where("primaryKey", Where.Operator.Includes, 1, 2, 4);
 
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ?", one.autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE is NULL", one.autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
-  }
-
-  public static void main(String[] args) {
-
-    Zero.One one = new Zero.One();
-    one.toggle = null;
-    System.out.println(
-    one
-      .where("a", Where.Operator.Equal, "s")
-      .where("c", Where.Operator.NotNull)
-      .where("primaryKey", Where.Operator.Includes, 1L, 2L, 4L)
-      .where("b", Where.Operator.Except, "hey")
-      .select(SelectBuilder.newInstance(config))
-      .getSql()
-      .getFormattedSql()
-      .toString());
-
-    one = new Zero.One();
-    one.toggle = null;
-    System.out.println(
-    one
-      .autoSelect(SelectBuilder.newInstance(config), true)
-      .getSql()
-      .getFormattedSql()
-      .toString());
-    System.out.println(
-    one
-      .autoSelect(SelectBuilder.newInstance(config), false)
-      .getSql()
-      .getFormattedSql()
-      .toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? order by PRIMARYKEY", one.autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE is NULL order by PRIMARYKEY", one.autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
   }
 }
