@@ -15,14 +15,17 @@
     limitations under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
   <modelVersion>4.0.0</modelVersion>
   <groupId>jp.furplag.sandbox</groupId>
   <artifactId>domino-fragment-origin</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <inceptionYear>2019</inceptionYear>
   <name>${project.artifactId}</name>
-  <description>a sandbox for using multiple database with DOMA .</description>
+  <description>a sandbox for using database with DOMA .</description>
   <url>https://github.com/furplag/${project.artifactId}</url>
 
   <licenses>
@@ -33,9 +36,7 @@
   </licenses>
   <organization />
   <developers>
-    <developer>
-
-    </developer>
+    <developer />
   </developers>
   <scm>
     <url>${project.url}</url>
@@ -58,11 +59,11 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <java.version>11</java.version>
+    <java.version>13</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
-    <doma.version>2.24.0</doma.version>
-    <tomcat.version>9.0.16</tomcat.version>
+    <doma.version>2.25.1</doma.version>
+    <tomcat.version>9.0.27</tomcat.version>
   </properties>
 
   <repositories>
@@ -110,7 +111,7 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
-      <version>1.4.199</version>
+      <version>1.4.200</version>
       <scope>test</scope>
     </dependency>
 
@@ -130,13 +131,13 @@
     <dependency>
       <groupId>jp.furplag.sandbox</groupId>
       <artifactId>jsonifier</artifactId>
-      <version>3.2.0</version>
+      <version>3.3.0-SNAPSHOT</version>
     </dependency>
 
     <dependency>
       <groupId>jp.furplag.sandbox</groupId>
       <artifactId>relic</artifactId>
-      <version>2.2.0</version>
+      <version>3.0.0</version>
     </dependency>
 
     <dependency>
@@ -148,26 +149,27 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
-      <version>5.4.2</version>
+      <version>5.5.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
-      <version>5.4.2</version>
+      <version>5.5.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
-      <version>5.4.2</version>
+      <version>5.5.2</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.8</version>
+      <version>1.18.10</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -209,7 +211,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.0.1</version>
+        <version>3.1.1</version>
         <configuration>
           <locale>en_US</locale>
           <author>${developer.name}</author>
@@ -234,7 +236,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>3.0.1</version>
+        <version>3.1.0</version>
         <executions>
           <execution>
             <id>attach-sources</id>

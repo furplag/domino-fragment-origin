@@ -1,43 +1,31 @@
 /**
  * Copyright (C) 2019+ furplag (https://github.com/furplag)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
-
 package jp.furplag.sandbox.domino.misc.vars;
 
 import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.seasar.doma.jdbc.builder.SelectBuilder;
-
-import jp.furplag.function.ThrowableFunction;
-import jp.furplag.sandbox.domino.misc.generic.Inspector;
-import jp.furplag.sandbox.domino.misc.origin.EntityOrigin;
+import org.seasar.doma.Embeddable;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import jp.furplag.sandbox.domino.misc.generic.Inspector.Predicates;
 import jp.furplag.sandbox.reflect.Reflections;
 import jp.furplag.sandbox.reflect.SavageReflection;
 import jp.furplag.sandbox.stream.Streamr;
-import lombok.AccessLevel;
+import jp.furplag.sandbox.trebuchet.Trebuchet;
+import jp.furplag.sandbox.tuple.Tag;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 
 /**
  * handles field and database column in entity for generating conditions in simple SQL .
@@ -46,123 +34,148 @@ import lombok.RequiredArgsConstructor;
  *
  * @param <T> the type of field
  */
-public interface Var<T> extends Comparable<Var<?>>, Map.Entry<String, T> {
+public interface Var<T> extends Comparable<Var<?>>, Tag<String, T> {
+  @EqualsAndHashCode(callSuper = true)
+  @ToString
+  static class AnyOf<T> extends Origin<T> {
 
-  /**
-   * handles field and database column in entity for generating conditions in simple SQL .
-   *
-   * @author furplag
-   *
-   * @param <T> the type of field
-   */
-  @EqualsAndHashCode(of = { "entity", "field" })
-  @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-  public static final class Embed<T> implements Var<T> {
-
-    /** instance of entity which related to database row . */
-    @NonNull
+    /** conditional values of where clause . */
     @Getter
-    private final EntityOrigin entity;
+    private final List<T> values;
 
-    /** field value of {@link org.seasar.doma.Embeddable @Embeddable} . */
-    @Getter
-    private final Object mysterio;
-
-    /** the field actually related to database column . */
-    @NonNull
-    @Getter
-    private final Field field;
-
-    /** {@inheritDoc} */
-    @SuppressWarnings({ "unchecked" })
-    @Override
-    public T getValue() {
-      return (T) SavageReflection.get(mysterio, field);
+    @SafeVarargs
+    private AnyOf(jp.furplag.sandbox.domino.misc.origin.Origin entity, Field field, T... values) {
+      super(entity, field);
+      this.values = Streamr.stream(values).collect(Collectors.toUnmodifiableList());
     }
   }
+  
+  @EqualsAndHashCode(of = {"field"})
+  @ToString
+  static abstract class Origin<T> implements Var<T> {
 
-  /**
-   * handles field and database column in entity for generating conditions in simple SQL .
-   *
-   * @author furplag
-   *
-   * @param <T> the type of field
-   */
-  @EqualsAndHashCode(of = { "entity", "field" })
-  public static class Origin<T> implements Var<T> {
-
-    /** instance of entity which related to database row . */
+    /** an instance of {@link jp.furplag.sandbox.domino.misc.origin.Origin}, or the {@link Embeddable} field value . */
     @Getter
-    private final EntityOrigin entity;
+    private final jp.furplag.sandbox.domino.misc.origin.Origin entity;
+
+    /** an instance of {@link jp.furplag.sandbox.domino.misc.origin.Origin}, or the {@link Embeddable} field value . */
+    private final Object mysterio;
 
     /** the field in this {@link #entity} which related to database column . */
     @Getter
+    @NonNull
     private final Field field;
 
-    /** nested field of this {@link #entity} . */
+    /** the column name of {@link #field} . */
     @Getter
-    private final List<Var<?>> actualFields;
+    @NonNull
+    private final String columnName;
 
     /**
      *
-     *
-     * @param entity instance of entity which related to database row, may not be null
-     * @param field he field in this {@link #entity} which related to database column, may not be null
+     * @param entity an instance of {@link jp.furplag.sandbox.domino.misc.origin.Origin}, or the {@link Embeddable} field value
+     * @param field the field in this {@link #entity} which related to database column
      */
-    public Origin(@NonNull EntityOrigin entity, @NonNull Field field) {
+    private Origin(jp.furplag.sandbox.domino.misc.origin.Origin entity, Field field) {
       this.entity = entity;
-      this.field = field;
-      actualFields = getActualFields(field).map((t) -> new Embed<>(entity, SavageReflection.get(entity, field), t)).collect(Collectors.toUnmodifiableList());
-    }
-
-    /**
-     * returns the field (s) actually related to database column .
-     *
-     * @param field the field in this {@link #entity}, maybe contains field (s) which related to a database column
-     * @return the field (s) actually related to database column
-     */
-    private static Stream<Field> getActualFields(final Field field) {
-      return Inspector.Predicates.isEmbeddable(field) ? Streamr.Filter.filtering(Reflections.getFields(field.getType()), Inspector.Predicates::isPersistive) :
-        Stream.empty();
+      if (Predicates.isDomain(field)) {
+        mysterio = SavageReflection.get(entity, field);
+        this.field = Reflections.getField(field.getType(), "value");
+      } else if (Predicates.isEmbeddableField(field)) {
+        mysterio = SavageReflection.get(entity, Streamr.Filter.filtering(Reflections.getFields(entity), (_field) -> _field.getType().equals(field.getDeclaringClass()), (_field) -> Objects.nonNull(Reflections.isAssignable(_field.getType(), field))).findFirst().orElse(null));
+        this.field = field;
+      } else {
+        mysterio = getEntity();
+        this.field = field;
+      }
+      this.columnName = entity.inspector().getName(field);
     }
 
     /** {@inheritDoc} */
     @Override
-    public final Stream<Var<?>> flatternyze() {
-      return getActualFields().isEmpty() ? Var.super.flatternyze() : Streamr.stream(getActualFields());
+    @SuppressWarnings({"unchecked"})
+    public T getValue() {
+      return (T) SavageReflection.get(mysterio, getField());
     }
+  }
+
+  @EqualsAndHashCode(callSuper = true)
+  @ToString
+  static final class Range<T extends Comparable<T>> extends Origin<T> {
+
+    /**
+     * an instance of {@link jp.furplag.sandbox.domino.misc.origin.Origin}, or the {@link Embeddable} field value .
+     */
+    @Getter
+    private final T min;
+
+    /**
+     * an instance of {@link jp.furplag.sandbox.domino.misc.origin.Origin}, or the {@link Embeddable} field value .
+     */
+    @Getter
+    private final T max;
+
+    private Range(jp.furplag.sandbox.domino.misc.origin.Origin entity, Field field, T min, T max) {
+      super(entity, field);
+      this.min = min;
+      this.max = max;
+    }
+  }
+
+  @EqualsAndHashCode(callSuper = true)
+  @ToString
+  static class Single<T> extends Origin<T> {
+
+    /** conditional value of where clause . */
+    @Getter
+    private final T value;
+
+    private Single(jp.furplag.sandbox.domino.misc.origin.Origin entity, Field field, T value) {
+      super(entity, field);
+      this.value = value;
+    }
+  }
+
+  static <T extends Comparable<T>> Var<T> rangeOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final String fieldName, final T min, final T max) {
+    return rangeOf(entity, Trebuchet.Functions.orNot(entity, fieldName, (t, u) -> t.inspector().getField(u)), min, max);
+  }
+
+  static <T extends Comparable<T>> Var<T> rangeOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final Field field, final T min, final T max) {
+    return new Range<>(entity, field, min, max);
+  }
+
+  @SafeVarargs
+  static <T> Var<T> varOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final String fieldName, final T... values) {
+    return varOf(entity, Trebuchet.Functions.orNot(entity, fieldName, (t, u) -> t.inspector().getField(u)), values);
+  }
+
+  @SafeVarargs
+  static <T> Var<T> varOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final Field field, final T... values) {
+    return Streamr.stream(values).count() > 1 ? new AnyOf<>(entity, field, values) : values == null || values.length < 1 ? new Origin<>(entity, field) {} : new Single<>(entity, field, Trebuchet.Functions.orNot(values, (_values) -> _values[0]));
   }
 
   /** {@inheritDoc} */
   @Override
   default int compareTo(Var<?> anotherOne) {
-    return Integer.compare(this.getColumnPriority(), ThrowableFunction.orDefault(anotherOne, Var::getColumnPriority, -1));
+    return Integer.compare(Predicates.isIdentity(getField()) ? -1 : 0, Trebuchet.Predicates.orNot(anotherOne, (t) -> Predicates.isIdentity(t.getField())) ? -1 : 0);
   }
 
   /**
-   * returns the column name of the field .
+   * <p>
+   * returns the name of this field .
+   * </p>
    *
-   * @return the column name of the field
+   * @return the name of the field
    */
-  default String getColumnName() {
-    return getEntity().inspector().getName(getField());
-  }
+  @JsonGetter
+  String getColumnName();
 
   /**
-   * just an internal process for comparing columns .
+   * returns an instance of the entity .
    *
-   * @return the result of comparing by field annotation
+   * @return an instance of the entity
    */
-  default int getColumnPriority() {
-    return Inspector.Predicates.isIdentity(getField()) ? 10 : 20;
-  }
-
-  /**
-   * returns an instance which has this field .
-   *
-   * @return {@link EntityOrigin}
-   */
-  EntityOrigin getEntity();
+  jp.furplag.sandbox.domino.misc.origin.Origin getEntity();
 
   /**
    * returns the field .
@@ -172,84 +185,40 @@ public interface Var<T> extends Comparable<Var<?>>, Map.Entry<String, T> {
   Field getField();
 
   /**
-   * returns the name of the field .
+   * returns the name of this field .
    *
    * @return the name of the field
    */
   default String getFieldName() {
-    return getField().getName();
+    return getKey();
   }
 
   /**
    * {@inheritDoc}
-   * <p>returns the name of this field .</p>
+   * <p>
+   * returns the name of this field .
+   * </p>
    *
    * @return the name of the field
    */
   @Override
   default String getKey() {
-    return getFieldName();
+    return getField().getName();
   }
 
   /** {@inheritDoc} */
-  @SuppressWarnings({ "unchecked" })
+  @JsonGetter
   @Override
-  default T getValue() {
-    return (T) SavageReflection.get(getEntity(), getField());
-  }
+  T getValue();
 
   /**
    * returns the type of the field .
    *
    * @return the type of the field
    */
-  @SuppressWarnings({ "unchecked" })
+  @JsonGetter
+  @SuppressWarnings({"unchecked"})
   default Class<T> getValueType() {
     return (Class<T>) getField().getType();
-  }
-
-  /**
-   * <p>Throws {@code UnsupportedOperationException} .</p>
-   *
-   * <p>The {@link Var} is immutable, so this operation is not supported .</p>
-   *
-   * @param value  the value to set
-   * @return never
-   * @throws UnsupportedOperationException as this operation is not supported
-   */
-  @Override
-  default T setValue(T value) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * constructing simple SQL .
-   *
-   * @param selectBuilder {@link SelectBuilder}
-   * @param fragment  a fragment of SQL query, e.g comma, space, &quot;where&quot;, and &quot;and&quot;
-   * @return selectBuilder ( query structured )
-   */
-  default SelectBuilder sql(@NonNull SelectBuilder selectBuilder, String fragment) {
-    return selectBuilder.sql(String.join("", Objects.toString(fragment, " "), getColumnName()));
-  }
-
-  /**
-   * shorthand for {@link Collectors#toMap(Function, Function)} .
-   *
-   * @param vars stream of fields
-   * @param keyMapper a mapping function to produce keys
-   * @return {@link Map} of {@link Var}
-   */
-  static Map<String, Var<?>> map(final Stream<Var<?>> vars, final Function<Var<?>, String> keyMapper) {
-    return Streamr.stream(vars).sorted().collect(Collectors.toMap(keyMapper, (v) -> v, (a, b) -> a, LinkedHashMap::new));
-  }
-
-  /**
-   * returns the field (s) actually related to database column .
-   *
-   * @return the field (s) actually related to database column
-   */
-  default Stream<Var<?>> flatternyze() {
-    return Stream.of(this);
   }
 }

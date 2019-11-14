@@ -1,17 +1,12 @@
 /**
  * Copyright (C) 2019+ furplag (https://github.com/furplag)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 
 package jp.furplag.sandbox.domino.misc.generic;
@@ -19,10 +14,12 @@ package jp.furplag.sandbox.domino.misc.generic;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,7 +27,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.Column;
 import org.seasar.doma.Domain;
@@ -39,19 +35,14 @@ import org.seasar.doma.Id;
 import org.seasar.doma.Table;
 import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.entity.NamingType;
-
-import jp.furplag.function.ThrowableBiFunction;
-import jp.furplag.function.ThrowableBiPredicate;
-import jp.furplag.function.ThrowableFunction;
-import jp.furplag.function.ThrowablePredicate;
+import jp.furplag.sandbox.domino.misc.DomainsAware;
 import jp.furplag.sandbox.domino.misc.origin.Origin;
 import jp.furplag.sandbox.reflect.Reflections;
 import jp.furplag.sandbox.stream.Streamr;
+import jp.furplag.sandbox.trebuchet.Trebuchet;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.ToString;
 
 /**
@@ -59,28 +50,11 @@ import lombok.ToString;
  *
  * @author furplag
  *
- * @param <T> the type of entity
+ * @param <ENTITY> the type of entity
  */
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@EqualsAndHashCode(of = { "classes", "fields", "namingType" })
-@ToString(of = { "entityClass" })
-public class Inspector<T extends Origin> {
-
-  /** the type of an entity which has referred by this inspector . */
-  @NonNull
-  private final Class<T> entityClass;
-
-  /** the types a family of this {@link #entityClass} . */
-  @Getter(lazy = true, value = AccessLevel.PROTECTED)
-  private final List<Class<?>> classes = Entities.familyze(entityClass);
-
-  /** {@link NamingType} which specified this {@link #entityClass} . */
-  @Getter(lazy = true)
-  private final NamingType namingType = Entities.Names.getNamingType(getClasses().toArray(Class<?>[]::new)).orElse(NamingType.NONE);
-
-  /** the fields a member of this {@link #entityClass} which related to a database column . */
-  @Getter(lazy = true)
-  private final List<Field> fields = getFieldsLazily(getClasses().toArray(Class<?>[]::new));
+@EqualsAndHashCode(of = {"classes", "fields", "namingType"})
+@ToString(of = {"entityClass"})
+public class Inspector<ENTITY extends Origin> {
 
   /**
    * a simply structure of the {@link org.seasar.doma.Entity} .
@@ -116,7 +90,7 @@ public class Inspector<T extends Origin> {
        * @param field a member of the entity
        * @return the field (s) actually related to database column
        */
-      private static Stream<Field> flatternyze(final Field field) {
+      static Stream<Field> flatternyze(final Field field) {
         return Predicates.isEmbeddable(field) ? Streamr.Filter.filtering(Reflections.getFields(field.getType()), Predicates::isPersistive) : Stream.of(field);
       }
 
@@ -129,9 +103,8 @@ public class Inspector<T extends Origin> {
        * @return true if the field matches any of values
        */
       @SafeVarargs
-      private static <T> boolean matches(final Field field, final Function<Field, T> condition, final T... values) {
-        final Set<T> set = Streamr.stream(values).collect(Collectors.toSet());
-        return set.contains(condition.apply(field));
+      private static <T> boolean matches(final Field field, final Function<Field, ? extends T> condition, final T... values) {
+        return Streamr.stream(values).collect(Collectors.toSet()).contains(condition.apply(field));
       }
     }
 
@@ -150,7 +123,7 @@ public class Inspector<T extends Origin> {
        * @return the name specified in Annotation. Or returns null by default
        */
       private static String getAlternate(final Class<? extends Origin> entityClass) {
-        return StringUtils.defaultIfBlank(ThrowableFunction.orNull(entityClass.getAnnotation(Table.class), Table::name), null);
+        return StringUtils.defaultIfBlank(Trebuchet.Functions.orNot(entityClass.getAnnotation(Table.class), Table::name), null);
       }
 
       /**
@@ -160,7 +133,7 @@ public class Inspector<T extends Origin> {
        * @return the name specified in Annotation. Or returns null by default
        */
       private static String getAlternate(final Field field) {
-        return StringUtils.defaultIfBlank(ThrowableFunction.orNull(field.getAnnotation(Column.class), Column::name), null);
+        return StringUtils.defaultIfBlank(Trebuchet.Functions.orNot(field.getAnnotation(Column.class), Column::name), null);
       }
 
       /**
@@ -170,7 +143,7 @@ public class Inspector<T extends Origin> {
        * @return the name which converted in the rule of database naming
        */
       private static String getDefault(final Class<? extends Origin> entityClass) {
-        return ThrowableBiFunction.orNull(entityClass, getNamingType(entityClass), (t, u) -> u.apply(t.getSimpleName()));
+        return Trebuchet.Functions.orNot(entityClass, getNamingType(entityClass), (t, u) -> u.apply(t.getSimpleName()));
       }
 
       /**
@@ -181,7 +154,7 @@ public class Inspector<T extends Origin> {
        * @return the name which converted in the rule of database naming
        */
       private static String getDefault(final Field field, final NamingType namingType) {
-        return ThrowableBiFunction.orDefault(field, namingType, (t, u) -> u.apply(t.getName()), field.getName());
+        return Trebuchet.Functions.orElse(field, namingType, (t, u) -> u.apply(t.getName()), (t, u, ex) -> t.getName());
       }
 
       /**
@@ -236,8 +209,20 @@ public class Inspector<T extends Origin> {
        */
       private static boolean rejectNone(final Class<?> entityClass) {
 
-        return !NamingType.NONE.equals(ThrowableFunction.orNull(entityClass, (t) -> t.getAnnotation(org.seasar.doma.Entity.class).naming()));
+        return !NamingType.NONE.equals(Trebuchet.Functions.orNot(entityClass, (t) -> t.getAnnotation(org.seasar.doma.Entity.class).naming()));
       }
+    }
+
+    /**
+     * just a converting array to {@link Set} .
+     *
+     * @param <T> the type of variable
+     * @param excludes the elements
+     * @return unique collection of the elements
+     */
+    @SafeVarargs
+    static <T> Set<T> excludes(final T... excludes) {
+      return Streamr.stream(excludes).collect(Collectors.toUnmodifiableSet());
     }
 
     /**
@@ -289,9 +274,10 @@ public class Inspector<T extends Origin> {
      * @return fields which related to a database column
      */
     @SafeVarargs
-    static <T> List<Field> getColumnFields(final Class<?>[] classes, final Function<Field, T> condition, T... excludeConditions) {
+    private static <T> List<Field> getColumnFields(final Class<?>[] classes, final Function<Field, ? extends T> condition, T... excludeConditions) {
       return getUniqueColumnFields(classes, condition, excludeConditions).sorted(Comparator.comparing((field) -> Predicates.isIdentity(field) ? -1 : 0)).collect(Collectors.toUnmodifiableList());
     }
+
 
     /**
      * returns fields which related to a database column .
@@ -302,7 +288,7 @@ public class Inspector<T extends Origin> {
      * @return fields which related to a database column
      */
     @SafeVarargs
-    private static <T> Stream<Field> getUniqueColumnFields(final Class<?>[] classes, final Function<Field, T> condition, T... excludeConditions) {
+    private static <T> Stream<Field> getUniqueColumnFields(final Class<?>[] classes, final Function<Field, ? extends T> condition, T... excludeConditions) {
       return Columns.distinct(getAllColumnFields(classes).filter((field) -> !Columns.matches(field, condition, excludeConditions)), condition);
     }
 
@@ -333,7 +319,7 @@ public class Inspector<T extends Origin> {
      * @return true if the type of a field annotated with specified {@link Annotation}
      */
     static boolean fieldTypeIsAnnotated(final Field field, Class<? extends Annotation> annotation) {
-      return ThrowableBiPredicate.orNot(field, annotation, (t, u) -> Reflections.isAnnotatedWith(t.getType(), u));
+      return Trebuchet.Predicates.orNot(field, annotation, (t, u) -> Reflections.isAnnotatedWith(t.getType(), u));
     }
 
     /**
@@ -344,7 +330,7 @@ public class Inspector<T extends Origin> {
      * @return true if the field annotated with specified {@link Annotation}
      */
     static boolean isAnnotated(AccessibleObject mysterio, Class<? extends Annotation> annotation) {
-      return ThrowableBiPredicate.orNot(mysterio, annotation, Reflections::isAnnotatedWith);
+      return Trebuchet.Predicates.orNot(mysterio, annotation, Reflections::isAnnotatedWith);
     }
 
     /**
@@ -354,7 +340,17 @@ public class Inspector<T extends Origin> {
      * @return true if the field type is {@link Domain @Domain} in DOMA
      */
     static boolean isDomain(final Field field) {
-      return fieldTypeIsAnnotated(field, Domain.class);
+      return Stream.of(Domain.class, DomainsAware.class).anyMatch(field.getType()::isAnnotationPresent);
+    }
+
+    /**
+     * tests if the field type is {@link Domain @Domain} in DOMA .
+     *
+     * @param field a member of the entity
+     * @return true if the field type is {@link Domain @Domain} in DOMA
+     */
+    static boolean isDomainField(final Field field) {
+      return Stream.of(Domain.class, DomainsAware.class).anyMatch(field.getDeclaringClass()::isAnnotationPresent);
     }
 
     /**
@@ -365,6 +361,16 @@ public class Inspector<T extends Origin> {
      */
     static boolean isEmbeddable(final Field field) {
       return fieldTypeIsAnnotated(field, Embeddable.class);
+    }
+
+    /**
+     * tests if the field type is the class which contains field (s) which related to a database column .
+     *
+     * @param field a member of the entity
+     * @return true if the field is one of primary key
+     */
+    static boolean isEmbeddableField(final Field field) {
+      return field.getDeclaringClass().isAnnotationPresent(Embeddable.class);
     }
 
     /**
@@ -384,7 +390,7 @@ public class Inspector<T extends Origin> {
      * @return true if the field does not related to a database column
      */
     static boolean isNotPersistive(final Field field) {
-      return Streamr.Filter.anyOf(Streamr.stream(field), Field::isSynthetic, Reflections::isStatic, (t) -> isAnnotated(t, Transient.class)).count() > 0;
+      return Streamr.Filter.anyOf(Streamr.stream(field), Field::isSynthetic, Reflections::isStatic, (t) -> isAnnotated(t, Transient.class)/* , (t) -> isEmbeddableField(t) && !isAnnotated(t, Column.class) */).count() > 0;
     }
 
     /**
@@ -394,28 +400,40 @@ public class Inspector<T extends Origin> {
      * @return true if the field is related to a database column
      */
     static boolean isPersistive(final Field field) {
-      return ThrowablePredicate.orNot(field, Predicate.not(Predicates::isNotPersistive)::test);
+      return Trebuchet.Predicates.orNot(field, Predicate.not(Predicates::isNotPersistive)::test);
     }
   }
 
-  /**
-   * initializing {@link #fields} lazily .
-   *
-   * @param classes the type of an entity and parents of
-   * @return the fields a member of this {@link #entityClass} which related to a database column
-   */
-  private static List<Field> getFieldsLazily(final Class<?>... classes) {
-    return Entities.getColumnFields(classes, (field) -> Entities.Names.getName(field, Entities.Names.getNamingType(classes).orElse(NamingType.NONE)));
+  /** the type of an entity which has referred by this inspector . */
+  private final Class<ENTITY> entityClass;
+
+  /** the types a family of this {@link #entityClass} . */
+  @Getter(value = AccessLevel.PROTECTED)
+  private final List<Class<?>> classes;
+
+  /** {@link NamingType} which specified this {@link #entityClass} . */
+  @Getter
+  private final NamingType namingType;
+
+  /** the fields a member of this {@link #entityClass} which related to a database column . */
+  @Getter
+  private final List<Field> fields;
+
+  private Inspector(Class<ENTITY> entityClass) {
+    this.entityClass = Objects.requireNonNull(entityClass);
+    classes = Collections.unmodifiableList(Entities.familyze(entityClass));
+    namingType = Entities.Names.getNamingType(getClasses().toArray(Class<?>[]::new)).orElse(NamingType.NONE);
+    fields = Entities.getColumnFields(getClasses().toArray(Class<?>[]::new), (field) -> Entities.Names.getName(field, Entities.Names.getNamingType(getClasses().toArray(Class<?>[]::new)).orElse(NamingType.NONE)));
   }
 
   /**
    * a static factory of {@link Inspector} .
    *
-   * @param <T> the type of entity
+   * @param <ENTITY> the type of entity
    * @param entityClass the type of entity .
    * @return an inspector
    */
-  public static <T extends Origin> Inspector<T> of(final Class<T> entityClass) {
+  public static <ENTITY extends Origin> Inspector<ENTITY> of(final Class<ENTITY> entityClass) {
     return new Inspector<>(entityClass);
   }
 
@@ -426,8 +444,19 @@ public class Inspector<T extends Origin> {
    * @param excludeConditions values for exclusion, they must be implemets {@link #equals(Object)}
    * @return fields which related to a database column
    */
+  public final Field getField(String fieldName) {
+    return Streamr.Filter.filtering(getFields(), (field) -> field.getName().equalsIgnoreCase(Objects.toString(fieldName, null))).findFirst().orElse(null);
+  }
+
+  /**
+   * returns fields which related to a database column .
+   *
+   * @param condition a condition for exclusion, eg. {@link Field#getName()}
+   * @param excludeConditions values for exclusion, they must be implemets {@link #equals(Object)}
+   * @return fields which related to a database column
+   */
   @SafeVarargs
-  public final <R> List<Field> getFields(Function<Field, R> condition, R... excludeConditions) {
+  public final <T> List<Field> getFields(Function<Field, ? extends T> condition, T... excludeConditions) {
     return Entities.getColumnFields(getClasses().toArray(Class<?>[]::new), condition, excludeConditions);
   }
 
