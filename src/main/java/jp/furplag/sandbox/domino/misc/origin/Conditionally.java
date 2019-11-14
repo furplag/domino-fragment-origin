@@ -42,10 +42,6 @@ public interface Conditionally extends Sequentially {
     return where(Trebuchet.Functions.orNot(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), values, Var::varOf), operator, Where::of));
   }
 
-  default Conditionally where(String fieldName, Where.Operator operator, String word) {
-    return where(Trebuchet.Functions.orNot(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), word, Var::varOf), operator, Where::wordOf));
-  }
-
   default <T extends Comparable<T>> Conditionally where(String fieldName, boolean containsEqual, T min, T max) {
     return where(Where.rangeOf((Range<T>) Var.rangeOf(this, inspector().getField(fieldName), min, max), containsEqual));
   }

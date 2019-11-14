@@ -117,9 +117,9 @@ public interface Where<T> extends Comparable<Where<?>> {
 
   }
 
-  static final class Word extends Origin<String> {
+  static final class Word<T> extends Origin<T> {
 
-    private Word(Var<String> var, @NonNull Operator operator) {
+    private Word(Var<T> var, @NonNull Operator operator) {
       super(var, Objects.toString(var.getValue(), "").isEmpty() && operator.isNegate() ? Operator.NotEqual : Objects.toString(var.getValue(), "").isEmpty() ? Operator.Equal : operator);
     }
 
@@ -127,7 +127,7 @@ public interface Where<T> extends Comparable<Where<?>> {
       final String prefix = Stream.of(Operator.Contains, Operator.EndsWith, Operator.Except, Operator.NotEndsWith).anyMatch(getOperator()::equals) ? "%" : "";
       final String suffix = Stream.of(Operator.Contains, Operator.Except, Operator.NotStartsWith, Operator.StartsWith).anyMatch(getOperator()::equals) ? "%" : "";
 
-      return String.join("", prefix, getVar().getValue(), suffix);
+      return String.join("", prefix, Objects.toString(getVar().getValue(), ""), suffix);
     }
 
     @Override
@@ -172,12 +172,8 @@ public interface Where<T> extends Comparable<Where<?>> {
     return new Range<>(var, containsEqual);
   }
 
-  static Where<String> wordOf(final Var<String> var, final Operator operator) {
-    return new Word(var, operator);
-  }
-
   static <T> Where<T> of(final Var<T> var, final @NonNull Operator operator) {
-    return var instanceof Var.AnyOf ? new AnyOf<>((Var.AnyOf<T>) var, operator) : new Where.Origin<>(var, operator) {};
+    return operator.isSearcher() ? new Word<>(var, operator) : var instanceof Var.AnyOf ? new AnyOf<>((Var.AnyOf<T>) var, operator) : new Where.Origin<>(var, operator) {};
   }
 
   /**
