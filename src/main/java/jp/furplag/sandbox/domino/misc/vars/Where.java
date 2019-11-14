@@ -15,11 +15,11 @@
  */
 package jp.furplag.sandbox.domino.misc.vars;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
-import jp.furplag.sandbox.stream.Streamr;
 import jp.furplag.sandbox.trebuchet.Trebuchet;
 import lombok.Getter;
 import lombok.NonNull;
@@ -85,8 +85,12 @@ public interface Where<T> extends Comparable<Where<?>> {
   }
 
   static final class AnyOf<T> extends Origin<T> {
+
     private AnyOf(Var.AnyOf<T> var, Operator operator) {
       super(var, operator);
+      if (!List.of(Operator.Includes, Operator.Excludes).contains(operator)) {
+        throw new IllegalArgumentException(String.format("the operator \"%s\" could not use \"in\" .", operator.name()));
+      }
     }
 
     @Override
@@ -113,6 +117,9 @@ public interface Where<T> extends Comparable<Where<?>> {
     private Origin(@NonNull Var<T> var, @NonNull Operator operator) {
       this.var = var;
       this.operator = Objects.isNull(var.getValue()) && operator.isNegate() ? Operator.NotNull : Objects.isNull(var.getValue()) ? Operator.Null : operator;
+      if (List.of(Operator.Includes, Operator.Excludes).contains(operator)) {
+        throw new IllegalArgumentException(String.format("the operator \"%s\" could not use single value .", operator.name()));
+      }
     }
 
   }
@@ -121,6 +128,9 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     private Word(Var<T> var, @NonNull Operator operator) {
       super(var, Objects.toString(var.getValue(), "").isEmpty() && operator.isNegate() ? Operator.NotEqual : Objects.toString(var.getValue(), "").isEmpty() ? Operator.Equal : operator);
+      if (!operator.isSearcher()) {
+        throw new IllegalArgumentException(String.format("the operator \"%s\" could not use \"like\" .", operator.name()));
+      }
     }
 
     private String getValue() {
@@ -144,6 +154,9 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     private Range(Var.Range<T> var, boolean containsEqual) {
       super(var, containsEqual ? Operator.LessThanEqual : Operator.LessThan);
+      if (var.getValueCount() < 1) {
+        throw new IllegalArgumentException(String.format("at least one value required ."));
+      }
     }
 
     @Override
@@ -153,15 +166,10 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     @Override
     public SelectBuilder sql(SelectBuilder selectBuilder) {
-      final long valueCount = Long.valueOf(Streamr.stream(getVar().getMin(), getVar().getMax()).count()).intValue();
-      if (valueCount < 1) {
-        new Origin<>(getVar(), Operator.Null) {}.sql(selectBuilder);
-      } else {
-        selectBuilder.sql(String.join(" ", valueCount > 1 ? " (" : " ", getVar().getColumnName(), (Objects.nonNull(getVar().getMin()) ? getOperator() : (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan)).getOperator()))
-            .param(getVar().getValueType(), Objects.requireNonNullElse(getVar().getMin(), getVar().getMax()));
-        if (valueCount > 1) {
-          selectBuilder.sql(String.join(" ", "and", getVar().getColumnName(), (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan).getOperator())).param(getVar().getValueType(), getVar().getMax()).sql(") ");
-        }
+      selectBuilder.sql(String.join(" ", getVar().getValueCount() > 1 ? " (" : " ", getVar().getColumnName(), (Objects.nonNull(getVar().getMin()) ? getOperator() : (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan)).getOperator()))
+        .param(getVar().getValueType(), Objects.requireNonNullElse(getVar().getMin(), getVar().getMax()));
+      if (getVar().getValueCount() > 1) {
+        selectBuilder.sql(String.join(" ", "and", getVar().getColumnName(), (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan).getOperator())).param(getVar().getValueType(), getVar().getMax()).sql(") ");
       }
 
       return selectBuilder;

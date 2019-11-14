@@ -1,17 +1,12 @@
 /**
  * Copyright (C) 2019+ furplag (https://github.com/furplag)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package jp.furplag.sandbox.domino.misc.vars;
 
@@ -56,7 +51,7 @@ public interface Var<T> extends Comparable<Var<?>>, Tag<String, T> {
   }
 
   @EqualsAndHashCode(of = {"field"})
-  @ToString
+  @ToString(exclude = {"entity", "mysterio"})
   static abstract class Origin<T> implements Var<T> {
 
     /** an instance of {@link jp.furplag.sandbox.domino.misc.origin.Origin}, or the {@link Embeddable} field value . */
@@ -105,7 +100,7 @@ public interface Var<T> extends Comparable<Var<?>>, Tag<String, T> {
   }
 
   @EqualsAndHashCode(callSuper = true)
-  @ToString
+  @ToString(callSuper = true, exclude = {"valueCount"})
   static final class Range<T extends Comparable<T>> extends Origin<T> {
 
     /**
@@ -120,15 +115,19 @@ public interface Var<T> extends Comparable<Var<?>>, Tag<String, T> {
     @Getter
     private final T max;
 
+    @Getter
+    private final long valueCount;
+
     private Range(jp.furplag.sandbox.domino.misc.origin.Origin entity, Field field, T min, T max) {
       super(entity, field);
       this.min = min;
       this.max = max;
+      this.valueCount = Streamr.stream(min, max).count();
     }
   }
 
   @EqualsAndHashCode(callSuper = true)
-  @ToString
+  @ToString(callSuper = true)
   static class Single<T> extends Origin<T> {
 
     /** conditional value of where clause . */
