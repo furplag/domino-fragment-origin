@@ -89,17 +89,7 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     @Override
     public SelectBuilder sql(SelectBuilder selectBuilder) {
-      selectBuilder.sql(String.join(" "
-      // @formatter:off
-        , getOperator().isNegate() ? " not" : ""
-        , getVar().getColumnName()
-        , getOperator().getOperator()
-        , " ("
-      )).params(getVar().getValueType(), getVar().getValues())
-      .sql(") ");
-      // @formatter:on
-
-      return selectBuilder;
+      return selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), " (")).params(getVar().getValueType(), getVar().getValues()).sql(") ");
     }
   }
 
@@ -138,16 +128,8 @@ public interface Where<T> extends Comparable<Where<?>> {
       if (Stream.of(Operator.Equal, Operator.NotEqual).anyMatch(getOperator()::equals)) {
         return super.sql(selectBuilder);
       }
-      selectBuilder.sql(String.join(" "
-      // @formatter:off
-        , getOperator().isNegate() ? " not" : ""
-        , getVar().getColumnName()
-        , getOperator().getOperator()
-        , " "
-      )).param(String.class, getValue())
-      .sql(" ");
 
-      return selectBuilder;
+      return selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), " ")).param(String.class, getValue()).sql(" ");
     }
   }
 
@@ -164,36 +146,15 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     @Override
     public SelectBuilder sql(SelectBuilder selectBuilder) {
-      switch (Long.valueOf(Streamr.stream(getVar().getMin(), getVar().getMax()).count()).intValue()) {
-        case 2:
-          selectBuilder.sql(String.join(" "
-            // @formatter:off
-            , getOperator().isNegate() ? " not (" : " ("
-            , getVar().getColumnName()
-            , getOperator().getOperator()
-            , ""
-          )).param(getVar().getValueType(), getVar().getMin())
-          .sql(String.join(" "
-            , "and"
-            , getVar().getColumnName()
-            , (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan).getOperator()
-            , ""
-          )).param(getVar().getValueType(), getVar().getMax())
-          .sql(") ");
-          break;
-          // @formatter:on
-        case 1:
-          selectBuilder.sql(String.join(" "
-          // @formatter:off
-            , getOperator().isNegate() ? " not" : ""
-            , getVar().getColumnName()
-            , (Objects.nonNull(getVar().getMin()) ? getOperator() : (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan)).getOperator()
-            , ""
-          )).param(getVar().getValueType(), Objects.requireNonNullElse(getVar().getMin(), getVar().getMax()));
-          break;
-          // @formatter:on
-        default:
-          return new Origin<>(getVar(), Operator.Null) {}.sql(selectBuilder);
+      final long valueCount = Long.valueOf(Streamr.stream(getVar().getMin(), getVar().getMax()).count()).intValue();
+      if (valueCount < 1) {
+        new Origin<>(getVar(), Operator.Null) {}.sql(selectBuilder);
+      } else {
+        selectBuilder.sql(String.join(" ", valueCount > 1 ? " (" : " ", getVar().getColumnName(), (Objects.nonNull(getVar().getMin()) ? getOperator() : (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan)).getOperator()))
+            .param(getVar().getValueType(), Objects.requireNonNullElse(getVar().getMin(), getVar().getMax()));
+        if (valueCount > 1) {
+          selectBuilder.sql(String.join(" ", "and", getVar().getColumnName(), (Operator.LessThanEqual.equals(getOperator()) ? Operator.GreaterThanEqual : Operator.GreaterThan).getOperator())).param(getVar().getValueType(), getVar().getMax()).sql(") ");
+        }
       }
 
       return selectBuilder;
@@ -227,14 +188,7 @@ public interface Where<T> extends Comparable<Where<?>> {
   Var<T> getVar();
 
   default SelectBuilder sql(SelectBuilder selectBuilder) {
-    // @formatter:off
-    selectBuilder.sql(String.join(" "
-      , getOperator().isNegate() ? " not" : ""
-      , getVar().getColumnName()
-      , getOperator().getOperator()
-      , getOperator().isNullFinder() ? "NULL " : ""
-    ));
-    // @formatter:on
+    selectBuilder.sql(String.join(" ", getOperator().isNegate() ? " not" : "", getVar().getColumnName(), getOperator().getOperator(), getOperator().isNullFinder() ? "NULL " : ""));
 
     return getOperator().isNullFinder() ? selectBuilder : selectBuilder.param(getVar().getValueType(), getVar().getValue());
   }

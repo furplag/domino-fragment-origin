@@ -49,7 +49,7 @@ public interface Var<T> extends Comparable<Var<?>>, Tag<String, T> {
       this.values = Streamr.stream(values).collect(Collectors.toUnmodifiableList());
     }
   }
-  
+
   @EqualsAndHashCode(of = {"field"})
   @ToString
   static abstract class Origin<T> implements Var<T> {
@@ -136,17 +136,8 @@ public interface Var<T> extends Comparable<Var<?>>, Tag<String, T> {
     }
   }
 
-  static <T extends Comparable<T>> Var<T> rangeOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final String fieldName, final T min, final T max) {
-    return rangeOf(entity, Trebuchet.Functions.orNot(entity, fieldName, (t, u) -> t.inspector().getField(u)), min, max);
-  }
-
   static <T extends Comparable<T>> Var<T> rangeOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final Field field, final T min, final T max) {
     return new Range<>(entity, field, min, max);
-  }
-
-  @SafeVarargs
-  static <T> Var<T> varOf(final jp.furplag.sandbox.domino.misc.origin.Origin entity, final String fieldName, final T... values) {
-    return varOf(entity, Trebuchet.Functions.orNot(entity, fieldName, (t, u) -> t.inspector().getField(u)), values);
   }
 
   @SafeVarargs
