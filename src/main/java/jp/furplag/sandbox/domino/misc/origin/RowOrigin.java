@@ -22,9 +22,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.commons.lang3.StringUtils;
-
+import jp.furplag.sandbox.domino.misc.generic.Inspector;
 import jp.furplag.sandbox.stream.Streamr;
 
 /**
@@ -33,18 +32,7 @@ import jp.furplag.sandbox.stream.Streamr;
  * @author furplag
  *
  */
-public interface EntityOrigin extends Origin {
-
-  /**
-   * returns database column names defined in this entity .
-   *
-   * @param excludeFieldNames field name (s) which excludes from result
-   * @return comma-separated database column names
-   */
-  @Override
-  default String selectColumnNames(String... excludeFieldNames) {
-    return StringUtils.defaultIfBlank(toString(getFields(inspector().getFields(), excludes(excludeFieldNames)), inspector()::getName), Origin.super.selectColumnNames());
-  }
+public interface RowOrigin extends Origin {
 
   /**
    * returns database columns defined in this entity .
@@ -57,12 +45,19 @@ public interface EntityOrigin extends Origin {
     return Streamr.Filter.filtering(fields, (t) -> !excludeFieldNames.contains(t.getName()));
   }
 
-  private static Set<String> excludes(final String... excludeFieldNames) {
-    return Streamr.stream(excludeFieldNames).collect(Collectors.toUnmodifiableSet());
+  static <T> String toString(final Stream<T> stream, final Function<T, String> toString) {
+    return Streamr.stream(stream).map(toString).collect(Collectors.joining(", "));
   }
 
-
-  private static <T> String toString(final Stream<T> stream, final Function<T, String> toString) {
-    return Streamr.stream(stream).map(toString).collect(Collectors.joining(", "));
+  /**
+   * returns database column names defined in this entity .
+   *
+   * @param excludeFieldNames field name (s) which excludes from result
+   * @return comma-separated database column names
+   */
+  @Override
+  default String selectColumnNames(String... excludeFieldNames) {
+    return Streamr.stream(excludeFieldNames).count() < 1 ? Origin.super.selectColumnNames() :
+      StringUtils.defaultIfBlank(toString(getFields(inspector().getFields(), Inspector.Entities.excludes(excludeFieldNames)), inspector()::getName), Origin.super.selectColumnNames());
   }
 }

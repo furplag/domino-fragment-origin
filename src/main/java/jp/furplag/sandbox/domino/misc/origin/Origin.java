@@ -19,7 +19,6 @@ package jp.furplag.sandbox.domino.misc.origin;
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 import org.seasar.doma.jdbc.entity.NamingType;
-
 import jp.furplag.sandbox.domino.misc.generic.Inspector;
 
 /**

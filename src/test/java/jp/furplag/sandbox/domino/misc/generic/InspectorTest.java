@@ -32,7 +32,7 @@ import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.entity.NamingType;
 
 import jp.furplag.sandbox.domino.misc.TestConfig;
-import jp.furplag.sandbox.domino.misc.origin.EntityOrigin;
+import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
 import jp.furplag.sandbox.domino.misc.origin.Origin;
 import jp.furplag.sandbox.stream.Streamr;
 import lombok.Data;
@@ -44,7 +44,7 @@ class InspectorTest {
   public static final org.seasar.doma.jdbc.Config config = TestConfig.singleton();
 
   @Data
-  public static class Zero implements EntityOrigin {
+  public static class Zero implements RowOrigin {
 
     @Column(name = "whatever")
     private static final String nope = "this is not a database column .";
@@ -90,7 +90,7 @@ class InspectorTest {
   }
 
   @Data
-  public static class One implements EntityOrigin {
+  public static class One implements RowOrigin {
   }
 
   @Value
@@ -183,5 +183,4 @@ class InspectorTest {
     );
     // @formatter:on
   }
-
 }

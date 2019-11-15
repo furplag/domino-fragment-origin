@@ -42,6 +42,9 @@ buildNumber.properties
 .apt_generated
 .apt_generated_test
 
+# STS
+.sts*-cache
+
 # Build
 out
 build
