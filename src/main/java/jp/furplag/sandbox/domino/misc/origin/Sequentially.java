@@ -32,21 +32,33 @@ public interface Sequentially extends RowOrigin {
 
   Queue<OrderBy> getOrder();
 
-  default Sequentially orderBy(String fieldName) {
+  default <ENTITY extends Sequentially> ENTITY orderBy(String fieldName) {
     return orderBy(fieldName, false);
   }
 
-  default Sequentially orderBy(String fieldName, boolean descendingOrder) {
-    Trebuchet.Consumers.orNot(getOrder(), fieldName, descendingOrder, (queue, _fieldName, direction) -> {
+  @SuppressWarnings("unchecked")
+  default <ENTITY extends Sequentially> ENTITY orderBy(String fieldName, boolean descendingOrder) {
+    Trebuchet.Consumers.orElse(getOrder(), fieldName, descendingOrder, (queue, _fieldName, direction) -> {
       final Field field = Objects.requireNonNullElse(this.inspector().getField(_fieldName), Reflections.getField(this, _fieldName));
 
       Inspector.Entities.Columns.flatternyze(field).map((_field) -> new OrderBy(inspector().getName(_field), direction)).forEach((x) -> {
         queue.removeIf(x::equals);
         queue.add(x);
       });
-    });
+    }, (ex) -> {ex.printStackTrace();});
 
-    return this;
+    return (ENTITY) this;
+  }
+
+  @SuppressWarnings("unchecked")
+  default <ENTITY extends Sequentially> ENTITY orderByExclusive(String fieldName, boolean descendingOrder) {
+    Trebuchet.Consumers.orElse(getOrder(), fieldName, descendingOrder, (queue, _fieldName, direction) -> {
+      final OrderBy orderBy = new OrderBy(inspector().getNamingType().apply(_fieldName), direction);
+      queue.removeIf(orderBy::equals);
+      queue.add(orderBy);
+    }, (ex) -> {ex.printStackTrace();});
+
+    return (ENTITY) this;
   }
 
   @EqualsAndHashCode( of = { "columnName" } )

@@ -16,6 +16,7 @@
 
 package jp.furplag.sandbox.domino.misc.origin;
 
+import java.io.Serializable;
 import org.apache.commons.lang3.StringUtils;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 import org.seasar.doma.jdbc.entity.NamingType;
@@ -27,7 +28,7 @@ import jp.furplag.sandbox.domino.misc.generic.Inspector;
  * @author furplag
  *
  */
-public interface Origin {
+public interface Origin extends Serializable {
 
   /**
    * returns an inspector of this entity .
@@ -44,7 +45,7 @@ public interface Origin {
    *
    * @return the name which converted in the rule of database naming
    */
-  default String getName() {
+  default String getTableName() {
     return StringUtils.defaultIfBlank(inspector().getName(), defaultName());
   }
 
@@ -84,7 +85,7 @@ public interface Origin {
    * @return select clause in SQL query
    */
   default String selectClause(String... excludeFieldNames) {
-    return String.format("select %s from %s ", selectColumnNames(excludeFieldNames), getName());
+    return String.format("select %s from %s ", selectColumnNames(excludeFieldNames), inspector().getName());
   }
 
   /**

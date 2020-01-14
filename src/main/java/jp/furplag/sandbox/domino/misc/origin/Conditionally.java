@@ -37,19 +37,24 @@ public interface Conditionally extends Sequentially {
 
   Map<String, Where<?>> getWheres();
 
-  @SuppressWarnings("unchecked")
-  default <T> Conditionally where(String fieldName, Where.Operator operator, T... values) {
-    return where(Trebuchet.Functions.orNot(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), values, Var::varOf), operator, Where::of));
+  default <T, ENTITY extends Conditionally> ENTITY where(String fieldName, Where.Operator operator, T value) {
+    return where(Trebuchet.Functions.orElse(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), value, Var::varOf), operator, Where::of, (t, u, ex) -> {ex.printStackTrace(); return null; } ));
   }
 
-  default <T extends Comparable<T>> Conditionally where(String fieldName, boolean containsEqual, T min, T max) {
+  @SuppressWarnings("unchecked")
+  default <T, ENTITY extends Conditionally> ENTITY where(String fieldName, Where.Operator operator, T... values) {
+    return where(Trebuchet.Functions.orElse(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), values, Var::varOf), operator, Where::of, (t, u, ex) -> {ex.printStackTrace(); return null; } ));
+  }
+
+  default <T extends Comparable<T>, ENTITY extends Conditionally> ENTITY where(String fieldName, boolean containsEqual, T min, T max) {
     return where(Where.rangeOf((Range<T>) Var.rangeOf(this, inspector().getField(fieldName), min, max), containsEqual));
   }
 
-  default <T> Conditionally where(Where<T> where) {
+  @SuppressWarnings({"unchecked"})
+  default <T, ENTITY extends Conditionally> ENTITY where(Where<T> where) {
     Trebuchet.Consumers.orNot(where, (_where) -> getWheres().put(_where.getVar().getColumnName(), where));
 
-    return this;
+    return (ENTITY) this;
   }
 
   /**
