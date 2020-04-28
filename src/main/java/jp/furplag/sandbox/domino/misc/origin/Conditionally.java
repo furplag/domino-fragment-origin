@@ -18,11 +18,13 @@ package jp.furplag.sandbox.domino.misc.origin;
 import java.lang.reflect.Field;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 import jp.furplag.sandbox.domino.misc.generic.Inspector;
 import jp.furplag.sandbox.domino.misc.vars.Var;
 import jp.furplag.sandbox.domino.misc.vars.Var.Range;
+import jp.furplag.sandbox.reflect.SavageReflection;
 import jp.furplag.sandbox.domino.misc.vars.Where;
 import jp.furplag.sandbox.stream.Streamr;
 import jp.furplag.sandbox.trebuchet.Trebuchet;
@@ -37,13 +39,14 @@ public interface Conditionally extends Sequentially {
 
   Map<String, Where<?>> getWheres();
 
+  @SuppressWarnings("unchecked")
   default <T, ENTITY extends Conditionally> ENTITY where(String fieldName, Where.Operator operator, T value) {
-    return where(Trebuchet.Functions.orElse(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), value, Var::varOf), operator, Where::of, (t, u, ex) -> {ex.printStackTrace(); return null; } ));
+    return operator == null ? (ENTITY) this : where(Trebuchet.Functions.orElse(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), value, Var::varOf), operator, Where::of, (t, u, ex) -> {ex.printStackTrace(); return null; } ));
   }
 
   @SuppressWarnings("unchecked")
   default <T, ENTITY extends Conditionally> ENTITY where(String fieldName, Where.Operator operator, T... values) {
-    return where(Trebuchet.Functions.orElse(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), values, Var::varOf), operator, Where::of, (t, u, ex) -> {ex.printStackTrace(); return null; } ));
+    return operator == null ? (ENTITY) this : where(Trebuchet.Functions.orElse(Trebuchet.Functions.orNot(this, inspector().getField(fieldName), values, Var::varOf), operator, Where::of, (t, u, ex) -> {ex.printStackTrace(); return null; } ));
   }
 
   default <T extends Comparable<T>, ENTITY extends Conditionally> ENTITY where(String fieldName, boolean containsEqual, T min, T max) {
@@ -72,7 +75,8 @@ public interface Conditionally extends Sequentially {
    * constructing simple SQL query .
    *
    * @param selectBuilder {@link SelectBuilder}
-   * @param excludeFieldNames field name (s) which excludes from condition
+   * @param excludeSelectFieldNames field name (s) which excludes from result
+   * @param excludeConditionalFieldNames field name (s) which excludes from condition
    * @return selectBuilder ( query structured )
    */
   default SelectBuilder select(SelectBuilder selectBuilder, String[] excludeSelectFieldNames, String... excludeConditionalFieldNames) {
@@ -99,11 +103,12 @@ public interface Conditionally extends Sequentially {
   /**
    * returns select clause in SQL query .
    *
-   * @param excludeFieldNames field name (s) which excludes from condition
+   * @param selectBuilder {@link SelectBuilder}
+   * @param excludeNull if true, ignoring null-value field
    * @return select clause in SQL query
    */
   default SelectBuilder autoSelect(SelectBuilder selectBuilder, boolean excludeNull) {
-    inspector().getFields().stream().map((f) -> Where.of(Var.varOf(this, f), Where.Operator.Equal)).filter((v) -> !excludeNull || !v.getOperator().isNullFinder()).forEach((v) -> where(v));
+    inspector().getFields().stream().map((f) -> Where.of(Var.varOf(this, f), Objects.isNull(SavageReflection.get(this, f)) ? Where.Operator.Null : Where.Operator.Equal)).filter((v) -> !excludeNull || !v.getOperator().isNullFinder()).forEach((v) -> where(v));
     Streamr.Filter.filtering(inspector().getFields(), Inspector.Predicates::isIdentity).map(Field::getName).forEach(this::orderBy);
 
     return select(selectBuilder);
