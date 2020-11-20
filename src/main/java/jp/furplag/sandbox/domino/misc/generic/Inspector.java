@@ -127,7 +127,9 @@ public class Inspector<ENTITY extends Origin> {
        * @return the name specified in Annotation. Or returns null by default
        */
       private static String getAlternate(final Class<? extends Origin> entityClass) {
-        return StringUtils.defaultIfBlank(Trebuchet.Functions.orNot(entityClass.getAnnotation(Table.class), Table::name), null);
+//        return StringUtils.defaultIfBlank(Trebuchet.Functions.orElse(entityClass.getAnnotation(Table.class), Table::name, (t, ex) -> {ex.printStackTrace(); return null;}), null);
+        return StringUtils.defaultIfBlank(Trebuchet.Functions.orElse(entityClass.getAnnotation(Table.class), Table::name, (t, ex) -> {
+          /* ex.printStackTrace(); */ return null;}), null);
       }
 
       /**
@@ -147,7 +149,7 @@ public class Inspector<ENTITY extends Origin> {
        * @return the name which converted in the rule of database naming
        */
       private static String getDefault(final Class<? extends Origin> entityClass) {
-        return Trebuchet.Functions.orNot(entityClass, getNamingType(entityClass), (t, u) -> u.apply(t.getSimpleName()));
+        return Trebuchet.Functions.orElse(entityClass, getNamingType(entityClass), (t, u) -> u.apply(t.getSimpleName()), (t, u, ex) -> {ex.printStackTrace(); return null;});
       }
 
       /**
@@ -444,8 +446,7 @@ public class Inspector<ENTITY extends Origin> {
   /**
    * returns fields which related to a database column .
    *
-   * @param condition a condition for exclusion, eg. {@link Field#getName()}
-   * @param excludeConditions values for exclusion, they must be implemets {@link #equals(Object)}
+   * @param fieldName the name of {@link Field}
    * @return fields which related to a database column
    */
   public final Field getField(String fieldName) {

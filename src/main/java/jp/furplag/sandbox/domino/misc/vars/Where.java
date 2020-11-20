@@ -116,10 +116,7 @@ public interface Where<T> extends Comparable<Where<?>> {
 
     private Origin(@NonNull Var<T> var, @NonNull Operator operator) {
       this.var = var;
-      this.operator = Objects.isNull(var.getValue()) && operator.isNegate() ? Operator.NotNull : Objects.isNull(var.getValue()) ? Operator.Null : operator;
-      if (List.of(Operator.Includes, Operator.Excludes).contains(operator)) {
-        throw new IllegalArgumentException(String.format("the operator \"%s\" could not use single value .", operator.name()));
-      }
+      this.operator = Objects.requireNonNullElse(operator, Objects.isNull(var.getValue()) && operator.isNegate() ? Operator.NotNull : Operator.Null);
     }
 
   }
