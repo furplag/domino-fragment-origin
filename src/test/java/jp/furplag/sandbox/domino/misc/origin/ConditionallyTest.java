@@ -17,6 +17,7 @@ package jp.furplag.sandbox.domino.misc.origin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -34,6 +35,7 @@ import org.seasar.doma.jdbc.builder.SelectBuilder;
 import org.seasar.doma.jdbc.entity.NamingType;
 import jp.furplag.sandbox.domino.misc.TestConfig;
 import jp.furplag.sandbox.domino.misc.vars.Where;
+import jp.furplag.sandbox.reflect.SavageReflection;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -143,8 +145,8 @@ class ConditionallyTest {
   @Test
   void test() {
     /* @formatter:off */
-    assertEquals("select * from ConditionallyTest$1", new RowOrigin() {}.select(SelectBuilder.newInstance(config)).getSql().toString());
-    assertEquals("select * from default", new RowOrigin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString());
+    assertEquals("select * from", new RowOrigin() {}.select(SelectBuilder.newInstance(config)).getSql().toString());
+    assertEquals("select * from", new RowOrigin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString());
     assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(config)).getSql().toString());
     assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(config)).getSql().toString());
     assertEquals("select * from TWO", new Zero.One.Two().select(SelectBuilder.newInstance(config)).getSql().toString());
@@ -165,16 +167,15 @@ class ConditionallyTest {
     assertEquals("select PRIMARYKEY, rename_this_field, A, B from ONE", new Zero.One().select(SelectBuilder.newInstance(config), new String[] {"one", "toggle", "c"}, new String[] {}).getSql().toString());
     /* @formatter:on */
 
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE = ? order by PRIMARYKEY", new Zero.One().autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE = ? order by PRIMARYKEY", new Zero.One().autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  rename_this_field = ? and  TOGGLE = ? order by PRIMARYKEY", new Zero.One().autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A is NULL and  rename_this_field = ? and  B is NULL and  C is NULL and  TOGGLE = ? order by PRIMARYKEY", new Zero.One().autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
 
-    Zero.One one = new Zero.One();
+    final Zero.One one = new Zero.One();
     one.toggle = null;
     one.where("a", Where.Operator.Equal, "s");
     one.where("c", Where.Operator.NotNull);
-    one.where("primaryKey", Where.Operator.Includes, 1, 2, 4);
-
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? order by PRIMARYKEY", one.autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
-    assertEquals("select * from ONE  where  PRIMARYKEY = ? and  A = ? and  rename_this_field = ? and  B = ? and  C = ? and  TOGGLE is NULL order by PRIMARYKEY", one.autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
+    one.where("primaryKey", Where.Operator.Includes, 1L, 2L, 4L);
+    assertEquals("select * from ONE  where  PRIMARYKEY in (?, ?, ?) and  A = ? and  rename_this_field = ? and  not C is NULL order by PRIMARYKEY", one.autoSelect(SelectBuilder.newInstance(config), true).getSql().toString());
+    assertEquals("select * from ONE  where  PRIMARYKEY in (?, ?, ?) and  A = ? and  rename_this_field = ? and  B is NULL and  not C is NULL and  TOGGLE is NULL order by PRIMARYKEY", one.autoSelect(SelectBuilder.newInstance(config), false).getSql().toString());
   }
 }

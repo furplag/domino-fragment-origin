@@ -17,10 +17,8 @@
 package jp.furplag.sandbox.domino.misc.generic;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import java.lang.reflect.Field;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.Test;
 import org.seasar.doma.Column;
 import org.seasar.doma.Domain;
@@ -30,10 +28,9 @@ import org.seasar.doma.Id;
 import org.seasar.doma.Table;
 import org.seasar.doma.Transient;
 import org.seasar.doma.jdbc.entity.NamingType;
-
 import jp.furplag.sandbox.domino.misc.TestConfig;
-import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
 import jp.furplag.sandbox.domino.misc.origin.Origin;
+import jp.furplag.sandbox.domino.misc.origin.RowOrigin;
 import jp.furplag.sandbox.stream.Streamr;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;

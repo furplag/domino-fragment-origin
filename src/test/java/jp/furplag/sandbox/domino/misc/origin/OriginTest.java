@@ -112,8 +112,8 @@ class OriginTest {
   void test() {
     // @formatter:off
     assertAll(
-        () -> assertEquals("select * from OriginTest$1", new Origin() {}.select(SelectBuilder.newInstance(config)).getSql().toString())
-      , () -> assertEquals("select * from default", new Origin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString())
+        () -> assertEquals("select * from", new Origin() {}.select(SelectBuilder.newInstance(config)).getSql().toString())
+      , () -> assertEquals("select * from", new Origin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString())
       , () -> assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(config)).getSql().toString())
 
       , () -> assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(config)).getSql().toString())

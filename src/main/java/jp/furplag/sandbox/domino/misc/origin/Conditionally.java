@@ -19,15 +19,19 @@ import java.lang.reflect.Field;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
+import org.seasar.doma.Id;
+import org.seasar.doma.Table;
 import org.seasar.doma.jdbc.builder.SelectBuilder;
 import jp.furplag.sandbox.domino.misc.generic.Inspector;
 import jp.furplag.sandbox.domino.misc.vars.Var;
 import jp.furplag.sandbox.domino.misc.vars.Var.Range;
-import jp.furplag.sandbox.reflect.SavageReflection;
 import jp.furplag.sandbox.domino.misc.vars.Where;
+import jp.furplag.sandbox.reflect.SavageReflection;
 import jp.furplag.sandbox.stream.Streamr;
 import jp.furplag.sandbox.trebuchet.Trebuchet;
+import lombok.Getter;
 
 /**
  * a simply structure of the {@link org.seasar.doma.Entity} .
@@ -108,7 +112,10 @@ public interface Conditionally extends Sequentially {
    * @return select clause in SQL query
    */
   default SelectBuilder autoSelect(SelectBuilder selectBuilder, boolean excludeNull) {
-    inspector().getFields().stream().map((f) -> Where.of(Var.varOf(this, f), Objects.isNull(SavageReflection.get(this, f)) ? Where.Operator.Null : Where.Operator.Equal)).filter((v) -> !excludeNull || !v.getOperator().isNullFinder()).forEach((v) -> where(v));
+    inspector().getFields().stream()
+      .map((f) -> Where.of(Var.varOf(this, f), Objects.isNull(SavageReflection.get(this, f)) ? Where.Operator.Null : Where.Operator.Equal))
+      .filter((v) -> !getWheres().keySet().contains(v.getVar().getColumnName()))
+      .filter((v) -> !excludeNull || !v.getOperator().isNullFinder()).forEach((v) -> where(v));
     Streamr.Filter.filtering(inspector().getFields(), Inspector.Predicates::isIdentity).map(Field::getName).forEach(this::orderBy);
 
     return select(selectBuilder);

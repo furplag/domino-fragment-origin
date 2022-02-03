@@ -113,8 +113,8 @@ class RowOriginTest {
   @Test
   void test() {
     // @formatter:off
-    assertEquals("select * from RowOriginTest$1", new RowOrigin() {}.select(SelectBuilder.newInstance(config)).getSql().toString());
-    assertEquals("select * from default", new RowOrigin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString());
+    assertEquals("select * from", new RowOrigin() {}.select(SelectBuilder.newInstance(config)).getSql().toString());
+    assertEquals("select * from", new RowOrigin() { @Override public String defaultName() { return "default";}}.select(SelectBuilder.newInstance(config)).getSql().toString());
 
     assertEquals("select * from Zero", new Zero().select(SelectBuilder.newInstance(config)).getSql().toString());
     assertEquals("select * from ONE", new Zero.One().select(SelectBuilder.newInstance(config)).getSql().toString());
